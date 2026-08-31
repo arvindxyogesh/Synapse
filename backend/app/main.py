@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import admin, gateway, stats
+from app.embeddings import get_embedder
 
 # Schema is managed by Alembic migrations (see alembic/ and
 # `alembic upgrade head`), not create_all-on-startup -- run migrations
@@ -31,4 +32,4 @@ app.include_router(stats.router)
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "embedder_backend": get_embedder().backend}

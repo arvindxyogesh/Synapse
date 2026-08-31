@@ -63,6 +63,15 @@ class RequestRecord:
     latency_ms: float
     cost_usd: float
     status_code: int
+    # True if this *exact* prompt string was already sent earlier in the
+    # run. Those are trivial exact-hash cache hits (see cache.py's
+    # exact-match check) that say nothing about the *similarity* decision
+    # -- with a small, fixed prompt universe, traffic saturates into
+    # almost-all-exact-repeats after enough requests, which would
+    # otherwise quietly inflate precision/recall into a meaningless 100%.
+    # compute_metrics() reports the non-exact-repeat subset separately so
+    # that doesn't happen unnoticed.
+    is_exact_repeat: bool = False
 
 
 def build_traffic(n: int, confuser_rate: float, seed: int) -> list[dict]:
@@ -125,11 +134,12 @@ def send_round(
         # replacement, so exact repeats are common over a few hundred
         # requests -- and a repeat of the identical string is a legitimate
         # exact-hash cache hit, not a false positive).
+        is_exact_repeat = prompt in seen_exact_prompts
         if cluster_id is not None:
             expected_hit = cluster_id in seen_clusters
             seen_clusters.add(cluster_id)
         else:
-            expected_hit = prompt in seen_exact_prompts
+            expected_hit = is_exact_repeat
         seen_exact_prompts.add(prompt)
 
         start = time.perf_counter()
@@ -141,31 +151,59 @@ def send_round(
         latency_ms = (time.perf_counter() - start) * 1000
 
         if resp.status_code != 200:
-            records.append(RequestRecord(prompt, cluster_id, expected_hit, False, latency_ms, 0.0, resp.status_code))
+            records.append(
+                RequestRecord(
+                    prompt, cluster_id, expected_hit, False, latency_ms, 0.0, resp.status_code, is_exact_repeat
+                )
+            )
             print(f"  [{i}/{len(plan)}] HTTP {resp.status_code}: {resp.text[:200]}")
             continue
 
         body = resp.json()
         actual_hit = bool(body["cached"])
-        records.append(RequestRecord(prompt, cluster_id, expected_hit, actual_hit, latency_ms, body["cost_usd"], 200))
+        records.append(
+            RequestRecord(
+                prompt, cluster_id, expected_hit, actual_hit, latency_ms, body["cost_usd"], 200, is_exact_repeat
+            )
+        )
         if i % 25 == 0 or i == len(plan):
             print(f"  [{i}/{len(plan)}] ...")
 
     return records
 
 
-def compute_metrics(records: list[RequestRecord]) -> dict:
-    ok = [r for r in records if r.status_code == 200]
-    failed = len(records) - len(ok)
-
-    tp = sum(1 for r in ok if r.expected_hit and r.actual_hit)
-    fn = sum(1 for r in ok if r.expected_hit and not r.actual_hit)
-    fp = sum(1 for r in ok if not r.expected_hit and r.actual_hit)
-    tn = sum(1 for r in ok if not r.expected_hit and not r.actual_hit)
+def _precision_recall_f1(rows: list[RequestRecord]) -> dict:
+    tp = sum(1 for r in rows if r.expected_hit and r.actual_hit)
+    fn = sum(1 for r in rows if r.expected_hit and not r.actual_hit)
+    fp = sum(1 for r in rows if not r.expected_hit and r.actual_hit)
+    tn = sum(1 for r in rows if not r.expected_hit and not r.actual_hit)
 
     precision = tp / (tp + fp) if (tp + fp) else float("nan")
     recall = tp / (tp + fn) if (tp + fn) else float("nan")
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else float("nan")
+    return {
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "confusion_matrix": {"tp": tp, "fp": fp, "fn": fn, "tn": tn},
+        "n": len(rows),
+    }
+
+
+def compute_metrics(records: list[RequestRecord]) -> dict:
+    ok = [r for r in records if r.status_code == 200]
+    failed = len(records) - len(ok)
+
+    overall = _precision_recall_f1(ok)
+    # The subset that actually exercises the similarity decision -- exact
+    # repeats of an already-seen string are trivial exact-hash hits (see
+    # cache.py) and say nothing about threshold correctness. Reported
+    # separately so "100% precision" can't quietly just mean "the traffic
+    # ran out of new things to ask."
+    novel = _precision_recall_f1([r for r in ok if not r.is_exact_repeat])
+
+    tp, fn, fp, tn = (overall["confusion_matrix"][k] for k in ("tp", "fn", "fp", "tn"))
+    precision, recall, f1 = overall["precision"], overall["recall"], overall["f1"]
 
     miss_latencies = [r.latency_ms for r in ok if not r.actual_hit]
     hit_latencies = [r.latency_ms for r in ok if r.actual_hit]
@@ -189,6 +227,7 @@ def compute_metrics(records: list[RequestRecord]) -> dict:
         "cache_recall": recall,
         "cache_f1": f1,
         "confusion_matrix": {"tp": tp, "fp": fp, "fn": fn, "tn": tn},
+        "novel_only": novel,  # excludes trivial exact-repeat hits -- see _precision_recall_f1 call above
         "avg_miss_latency_ms": avg_miss,
         "p95_miss_latency_ms": p95_miss,
         "avg_hit_latency_ms": avg_hit,
@@ -211,6 +250,16 @@ def print_round_summary(round_no: int, metrics: dict, threshold_state: dict | No
         f"recall={metrics['cache_recall']:.1%}  f1={metrics['cache_f1']:.1%}  "
         f"TP={cm['tp']} FP={cm['fp']} FN={cm['fn']} TN={cm['tn']}{threshold_bits}"
     )
+    novel = metrics["novel_only"]
+    if novel["n"]:
+        ncm = novel["confusion_matrix"]
+        print(
+            f"          novel-only (excl. exact repeats, n={novel['n']}): "
+            f"precision={novel['precision']:.1%}  recall={novel['recall']:.1%}  "
+            f"TP={ncm['tp']} FP={ncm['fp']} FN={ncm['fn']} TN={ncm['tn']}"
+        )
+    else:
+        print("          novel-only: n=0 -- every request this round was an exact repeat of an earlier prompt")
 
 
 def run(args: argparse.Namespace) -> None:

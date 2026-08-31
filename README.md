@@ -73,19 +73,40 @@ tunes it online, per model, with a small closed-loop controller:
 State and results are visible at `GET /v1/stats/cache-threshold` and on
 the dashboard.
 
-**Measured, reproducible result** (`backend/scripts/benchmark.py --rounds`,
-mock mode + hash-embedding fallback -- see that flag's docstring to
-reproduce): starting from a deliberately loose threshold of 0.55 against
-Synapse's labeled cluster/confuser traffic generator, precision recovered
-from 96.3% to a sustained 100% within ~250 verified samples as the
-controller tightened the threshold from 0.55 to 0.80-0.82 in response to
-shadow-verified false positives, with recall *simultaneously* climbing
-from 84.6% to 100% as the cache filled in. Building this surfaced two real
-bugs worth naming rather than hiding: an EWMA tuned too fast (alpha=0.3,
-~3-sample memory) silently underestimated a real ~15% false-positive rate
-down to ~0%, and the benchmark harness's own ground truth mislabeled
-repeated confuser prompts as false positives. Both are fixed in the
-current code (see the git history for the diagnostic process).
+### Honest status of the evidence so far
+
+`backend/scripts/benchmark.py --rounds` (see its docstring to reproduce)
+demonstrates the *mechanism* end-to-end -- shadow verification firing,
+false positives being detected, the threshold moving in response, and
+recovering -- but every number produced against this environment used
+`MOCK_MODE` and the **hash-embedding fallback**, not a real embedding
+model: `sentence-transformers` needs to download weights from
+huggingface.co on first use, which this sandbox's network policy blocks
+outright (confirmed directly, not assumed -- see `app/embeddings.py`,
+which now logs a warning and reports its active backend on `GET /health`
+specifically because this failure used to be silent). That matters,
+concretely: the benchmark also reports precision/recall on the
+**"novel-only"** subset -- excludes exact-repeat prompts, which trivially
+hit and inflate the headline numbers once a small traffic universe
+saturates -- and on that harder, honest slice, the hash fallback's recall
+on genuine differently-worded paraphrases collapses to roughly 0-40%. The
+bag-of-words hash embedder mostly can't tell that "How do I reset my
+password?" and "I forgot my password, how can I reset it?" mean the same
+thing; only close-to-verbatim repeats reliably hit.
+
+So: the control loop (shadow verification catching real errors, the
+threshold correctly tightening/loosening in response) is verified and
+reproducible. Whether it holds up with *real* embeddings and a *real*
+LLM-judge -- where the interesting failure modes are different (judge
+noise/inconsistency, real embeddings' own precision/recall curve) -- is
+not yet measured and needs a real network + a real Ollama-served model,
+i.e. GPU is optional but real network access and a real model are not.
+
+Two real bugs were also found and fixed while building this (not just the
+network-blocked one above): an EWMA tuned too fast (alpha=0.3, ~3-sample
+memory) silently underestimated a real ~15% false-positive rate down to
+~0%, and the benchmark harness's own ground truth mislabeled repeated
+confuser prompts as false positives. Both fixed in the current code.
 
 ## Stack
 
@@ -225,15 +246,24 @@ frontend/
 
 ## Notes / possible next steps
 
+Highest-value next step, concretely: re-run
+`backend/scripts/benchmark.py --rounds` on a machine with real network
+access and Ollama, with `pip install -r requirements.txt` (the full one,
+which includes `sentence-transformers`) so `GET /health` reports
+`"embedder_backend": "sentence-transformers"` instead of
+`"hash-fallback"` -- then compare the "novel-only" precision/recall
+against the hash-fallback numbers documented above. A GPU speeds up
+Ollama inference but isn't required for this specific comparison; what's
+required is that huggingface.co isn't blocked.
+
+Other next steps:
 - Swap linear TTL-window rate limiting for a sliding-window/token-bucket
   algorithm if bursts right at the minute boundary start to matter.
 - Multi-provider support beyond Ollama (e.g. vLLM, llama.cpp server).
 - Alerting on quota/rate-limit thresholds instead of just blocking at 100%.
-- Re-run the adaptive-threshold benchmark against real Ollama + GPU serving
-  and a real sentence-transformers embedder (not the hashing fallback) to
-  see how the convergence numbers above hold up with a genuinely semantic
-  embedding space instead of bag-of-words.
 - A controlled ANN-vs-linear-scan latency/throughput benchmark as cache
   size grows (1k/10k/100k entries) -- the vector index exists, but its
   payoff at scale isn't measured yet.
-- Load/concurrency testing (p50/p95/p99 under N concurrent users).
+- Load/concurrency testing (p50/p95/p99 under N concurrent users), ideally
+  against real GPU-served Ollama so the numbers reflect real inference
+  queueing under load, not the mock provider's near-instant response.

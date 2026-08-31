@@ -8,11 +8,14 @@ whole gateway -- still works without it.
 """
 
 import hashlib
+import logging
 from functools import lru_cache
 
 import numpy as np
 
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 _HASH_DIM = 256
 
@@ -42,6 +45,22 @@ class Embedder:
             self._model = SentenceTransformer(settings.embedding_model_name)
         except Exception:
             self._model = None
+            # This used to fail silently -- degrading the entire semantic
+            # cache to a much cruder bag-of-words fallback with zero
+            # operational visibility that it happened (found the hard way:
+            # a whole benchmark run was silently using the fallback because
+            # the real model's weights couldn't be downloaded, and nothing
+            # said so). A cache that can't recognize paraphrases is a
+            # correctness regression, not just a performance one -- log it
+            # loudly enough that it shows up in normal server logs.
+            logger.warning(
+                "Falling back to the hashing embedder -- could not load '%s' "
+                "(no network access to download weights, or another load "
+                "failure). Semantic cache hit rate on genuine paraphrases "
+                "will be substantially worse than with the real model.",
+                get_settings().embedding_model_name,
+                exc_info=True,
+            )
 
     def embed(self, text: str) -> np.ndarray:
         self._load()
@@ -49,6 +68,18 @@ class Embedder:
             vec = self._model.encode(text, normalize_embeddings=True)
             return np.asarray(vec, dtype=np.float32)
         return _hash_embed(text)
+
+    @property
+    def backend(self) -> str:
+        """'sentence-transformers' or 'hash-fallback', surfaced on
+        GET /health specifically so silently running in degraded mode
+        (see the warning in _load()) is visible without reading logs.
+        Deliberately does *not* trigger loading -- a liveness endpoint
+        shouldn't eagerly do a first-time model download/load; it reports
+        'not-yet-initialized' until the first real embed() call happens."""
+        if not self._tried_load:
+            return "not-yet-initialized"
+        return "sentence-transformers" if self._model is not None else "hash-fallback"
 
 
 @lru_cache
