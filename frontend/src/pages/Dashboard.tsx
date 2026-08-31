@@ -3,12 +3,13 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 
 import { api } from "../api/client";
 import StatCard from "../components/StatCard";
-import type { ProviderBreakdown, StatsSummary, TimeseriesPoint } from "../types";
+import type { CacheThresholdState, ProviderBreakdown, StatsSummary, TimeseriesPoint } from "../types";
 
 export default function Dashboard() {
   const [summary, setSummary] = useState<StatsSummary | null>(null);
   const [timeseries, setTimeseries] = useState<TimeseriesPoint[]>([]);
   const [providers, setProviders] = useState<ProviderBreakdown[]>([]);
+  const [thresholds, setThresholds] = useState<CacheThresholdState[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -16,15 +17,17 @@ export default function Dashboard() {
 
     async function load() {
       try {
-        const [s, t, p] = await Promise.all([
+        const [s, t, p, th] = await Promise.all([
           api.getSummary(),
           api.getTimeseries(),
           api.getProviderBreakdown(),
+          api.getCacheThresholdState(),
         ]);
         if (!cancelled) {
           setSummary(s);
           setTimeseries(t);
           setProviders(p);
+          setThresholds(th);
           setError(null);
         }
       } catch (err) {
@@ -97,6 +100,48 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {thresholds.length > 0 && (
+        <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+          <h2 className="mb-1 text-sm font-medium text-slate-300">Adaptive cache threshold</h2>
+          <p className="mb-4 text-xs text-slate-500">
+            Per-model similarity threshold, self-tuned from LLM-judge shadow verification of a sample of cache
+            hits (see app/threshold_controller.py).
+          </p>
+          <table className="w-full text-left text-sm">
+            <thead className="text-slate-400">
+              <tr>
+                <th className="py-1 font-medium">Model</th>
+                <th className="py-1 font-medium">Threshold</th>
+                <th className="py-1 font-medium">Est. false-positive rate</th>
+                <th className="py-1 font-medium">Target</th>
+                <th className="py-1 font-medium">Verified samples</th>
+                <th className="py-1 font-medium">Last move</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800">
+              {thresholds.map((t) => (
+                <tr key={t.model} className="text-slate-200">
+                  <td className="py-1.5">{t.model}</td>
+                  <td className="py-1.5">{t.threshold.toFixed(3)}</td>
+                  <td className="py-1.5">
+                    <span className={t.estimated_false_positive_rate > t.target_false_positive_rate ? "text-amber-400" : "text-emerald-400"}>
+                      {(t.estimated_false_positive_rate * 100).toFixed(1)}%
+                    </span>
+                  </td>
+                  <td className="py-1.5 text-slate-400">{(t.target_false_positive_rate * 100).toFixed(0)}%</td>
+                  <td className="py-1.5 text-slate-400">{t.verified_samples}</td>
+                  <td className="py-1.5 text-slate-400">
+                    {t.last_direction === "up" && <span className="text-amber-400">tightened ↑</span>}
+                    {t.last_direction === "down" && <span className="text-emerald-400">loosened ↓</span>}
+                    {!t.last_direction && "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

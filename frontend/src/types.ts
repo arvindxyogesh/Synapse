@@ -48,3 +48,13 @@ export interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
+
+export interface CacheThresholdState {
+  model: string;
+  threshold: number;
+  estimated_false_positive_rate: number;
+  verified_samples: number;
+  target_false_positive_rate: number;
+  last_direction: "up" | "down" | null;
+  last_adjusted_at: number | null;
+}

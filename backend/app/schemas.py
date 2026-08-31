@@ -95,6 +95,16 @@ class ProviderBreakdown(BaseModel):
     cost_usd: float
 
 
+class CacheThresholdState(BaseModel):
+    model: str
+    threshold: float
+    estimated_false_positive_rate: float
+    verified_samples: int
+    target_false_positive_rate: float
+    last_direction: str | None = None
+    last_adjusted_at: float | None = None
+
+
 class RequestLogOut(BaseModel):
     id: str
     provider: str

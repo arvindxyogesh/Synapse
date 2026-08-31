@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import Integer, cast, func
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.db import get_db
 from app.models import RequestLog
 from app.pricing import estimate_cost_usd
-from app.schemas import ProviderBreakdown, RequestLogOut, StatsSummary, TimeseriesPoint
+from app.schemas import CacheThresholdState, ProviderBreakdown, RequestLogOut, StatsSummary, TimeseriesPoint
+from app.threshold_controller import get_threshold_controller
 
 router = APIRouter(prefix="/v1/stats", tags=["stats"])
 
@@ -117,3 +119,27 @@ def request_log(
         )
         for r in rows
     ]
+
+
+@router.get("/cache-threshold", response_model=list[CacheThresholdState])
+def cache_threshold_state():
+    """Per-model adaptive cache-similarity threshold state -- see
+    app/threshold_controller.py. Only models that have served at least one
+    cache hit (so a controller state exists) are listed."""
+    settings = get_settings()
+    controller = get_threshold_controller()
+    states = []
+    for model in controller.all_models():
+        state = controller.get_state(model)
+        states.append(
+            CacheThresholdState(
+                model=model,
+                threshold=round(state.threshold, 4),
+                estimated_false_positive_rate=round(state.fp_rate_ewma, 4),
+                verified_samples=state.verified_count,
+                target_false_positive_rate=settings.target_false_positive_rate,
+                last_direction=state.last_direction,
+                last_adjusted_at=state.last_adjusted_at,
+            )
+        )
+    return sorted(states, key=lambda s: s.model)

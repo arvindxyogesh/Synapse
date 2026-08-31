@@ -22,6 +22,22 @@ Usage:
         --admin-key change-me-admin-key \\
         --model llama3 \\
         --requests 300
+
+Pass --rounds N (N > 1) to send the traffic plan repeatedly against the
+same persistent gateway and watch the *adaptive cache threshold*
+(app/threshold_controller.py) converge across rounds -- each round's
+precision/recall/threshold/estimated-FP-rate is printed and written to the
+output JSON, so you can chart precision recovering as the controller
+tightens the threshold in response to shadow-verified false positives.
+For a convergence run that's actually visible in a handful of rounds
+(rather than the default threshold already being strict enough to avoid
+false positives in the first place), start the gateway with a
+deliberately loose starting point and a higher sampling rate, e.g.:
+
+    CACHE_SIMILARITY_THRESHOLD=0.75 SHADOW_VERIFY_SAMPLE_RATE=1.0 \\
+        uvicorn app.main:app
+
+    python backend/scripts/benchmark.py --rounds 6 --requests 150
 """
 
 from __future__ import annotations
@@ -35,7 +51,6 @@ import time
 from dataclasses import asdict, dataclass
 
 import httpx
-
 from benchmark_data import CLUSTERS, CONFUSERS
 
 
@@ -79,59 +94,69 @@ def get_or_create_api_key(client: httpx.Client, admin_key: str) -> str:
     return resp.json()["api_key"]
 
 
-def run(args: argparse.Namespace) -> None:
-    client = httpx.Client(base_url=args.gateway_url, timeout=120)
+def fetch_threshold_state(client: httpx.Client, model: str) -> dict | None:
+    resp = client.get("/v1/stats/cache-threshold")
+    resp.raise_for_status()
+    for row in resp.json():
+        if row["model"] == model:
+            return row
+    return None
 
-    health = client.get("/health")
-    health.raise_for_status()
 
-    api_key = args.api_key or get_or_create_api_key(client, args.admin_key)
-    auth_headers = {"Authorization": f"Bearer {api_key}"}
-
-    plan = build_traffic(args.requests, args.confuser_rate, args.seed)
-    seen_clusters: set[str] = set()
+def send_round(
+    client: httpx.Client,
+    auth_headers: dict,
+    model: str,
+    plan: list[dict],
+    seen_clusters: set[str],
+    seen_exact_prompts: set[str],
+    round_no: int,
+) -> list[RequestRecord]:
     records: list[RequestRecord] = []
-
-    print(f"Sending {len(plan)} requests to {args.gateway_url} (model={args.model})...")
+    print(f"Round {round_no}: sending {len(plan)} requests (model={model})...")
     for i, item in enumerate(plan, 1):
         cluster_id = item["cluster_id"]
         prompt = item["prompt"]
         # A paraphrase counts as an expected-hit only from its *second*
-        # appearance onward; confusers are always expected to miss.
-        expected_hit = cluster_id is not None and cluster_id in seen_clusters
+        # appearance onward (tracked across the whole run, not per round --
+        # the cache persists across rounds against a live gateway).
+        # Confusers are expected to miss *unless* this exact confuser text
+        # was already sent before (there are only 15 of them, drawn with
+        # replacement, so exact repeats are common over a few hundred
+        # requests -- and a repeat of the identical string is a legitimate
+        # exact-hash cache hit, not a false positive).
         if cluster_id is not None:
+            expected_hit = cluster_id in seen_clusters
             seen_clusters.add(cluster_id)
+        else:
+            expected_hit = prompt in seen_exact_prompts
+        seen_exact_prompts.add(prompt)
 
         start = time.perf_counter()
         resp = client.post(
             "/v1/chat/completions",
-            json={"model": args.model, "messages": [{"role": "user", "content": prompt}]},
+            json={"model": model, "messages": [{"role": "user", "content": prompt}]},
             headers=auth_headers,
         )
         latency_ms = (time.perf_counter() - start) * 1000
 
         if resp.status_code != 200:
-            records.append(
-                RequestRecord(prompt, cluster_id, expected_hit, False, latency_ms, 0.0, resp.status_code)
-            )
+            records.append(RequestRecord(prompt, cluster_id, expected_hit, False, latency_ms, 0.0, resp.status_code))
             print(f"  [{i}/{len(plan)}] HTTP {resp.status_code}: {resp.text[:200]}")
             continue
 
         body = resp.json()
         actual_hit = bool(body["cached"])
-        records.append(
-            RequestRecord(prompt, cluster_id, expected_hit, actual_hit, latency_ms, body["cost_usd"], 200)
-        )
+        records.append(RequestRecord(prompt, cluster_id, expected_hit, actual_hit, latency_ms, body["cost_usd"], 200))
         if i % 25 == 0 or i == len(plan):
             print(f"  [{i}/{len(plan)}] ...")
 
-    report(records, args)
+    return records
 
 
-def report(records: list[RequestRecord], args: argparse.Namespace) -> None:
+def compute_metrics(records: list[RequestRecord]) -> dict:
     ok = [r for r in records if r.status_code == 200]
-    if len(ok) < len(records):
-        print(f"\nWARNING: {len(records) - len(ok)} requests failed and are excluded below.")
+    failed = len(records) - len(ok)
 
     tp = sum(1 for r in ok if r.expected_hit and r.actual_hit)
     fn = sum(1 for r in ok if r.expected_hit and not r.actual_hit)
@@ -146,63 +171,113 @@ def report(records: list[RequestRecord], args: argparse.Namespace) -> None:
     hit_latencies = [r.latency_ms for r in ok if r.actual_hit]
     avg_miss = statistics.mean(miss_latencies) if miss_latencies else float("nan")
     avg_hit = statistics.mean(hit_latencies) if hit_latencies else float("nan")
-    p95_miss = statistics.quantiles(miss_latencies, n=20)[18] if len(miss_latencies) >= 20 else max(miss_latencies, default=float("nan"))
+    p95_miss = (
+        statistics.quantiles(miss_latencies, n=20)[18]
+        if len(miss_latencies) >= 20
+        else max(miss_latencies, default=float("nan"))
+    )
 
     cost_incurred = sum(r.cost_usd for r in ok)
-    # Hits are recorded at cost_usd == 0. Approximate the cost a cache-less
-    # gateway would have paid for each hit using this run's average miss
-    # cost as a stand-in for "what this would have cost without the cache."
     avg_miss_cost = statistics.mean([r.cost_usd for r in ok if not r.actual_hit]) if miss_latencies else 0.0
     cost_saved = sum(avg_miss_cost for r in ok if r.actual_hit)
     cost_without_cache = cost_incurred + cost_saved
 
-    print("\n" + "=" * 60)
-    print("CACHE HIT/MISS DECISION QUALITY")
-    print("=" * 60)
-    print(f"  requests analyzed : {len(ok)}")
-    print(f"  precision         : {precision:.1%}  (of cache hits, how many were actually the same question)")
-    print(f"  recall            : {recall:.1%}  (of repeat questions, how many the cache actually caught)")
-    print(f"  f1                : {f1:.1%}")
-    print(f"  confusion matrix  : TP={tp} FP={fp} FN={fn} TN={tn}")
+    return {
+        "requests": len(ok),
+        "failed": failed,
+        "cache_precision": precision,
+        "cache_recall": recall,
+        "cache_f1": f1,
+        "confusion_matrix": {"tp": tp, "fp": fp, "fn": fn, "tn": tn},
+        "avg_miss_latency_ms": avg_miss,
+        "p95_miss_latency_ms": p95_miss,
+        "avg_hit_latency_ms": avg_hit,
+        "cost_incurred_usd": cost_incurred,
+        "cost_without_cache_usd": cost_without_cache,
+    }
 
-    print("\n" + "=" * 60)
-    print("LATENCY")
-    print("=" * 60)
-    print(f"  avg cache-miss (real inference) : {avg_miss:.0f} ms")
-    print(f"  p95 cache-miss                  : {p95_miss:.0f} ms")
-    print(f"  avg cache-hit                   : {avg_hit:.0f} ms")
-    if avg_hit and avg_hit == avg_hit:  # not NaN
-        print(f"  speedup on a cache hit           : {avg_miss / avg_hit:.1f}x")
 
-    print("\n" + "=" * 60)
-    print("COST (estimated, via the gateway's reference pricing table)")
-    print("=" * 60)
-    print(f"  cost incurred (with cache)      : ${cost_incurred:.5f}")
-    print(f"  cost without cache (estimated)  : ${cost_without_cache:.5f}")
-    if cost_without_cache:
-        print(f"  cost reduction                  : {(1 - cost_incurred / cost_without_cache):.1%}")
-
-    out_path = args.output
-    with open(out_path, "w") as f:
-        json.dump(
-            {
-                "requests": len(ok),
-                "model": args.model,
-                "cache_precision": precision,
-                "cache_recall": recall,
-                "cache_f1": f1,
-                "confusion_matrix": {"tp": tp, "fp": fp, "fn": fn, "tn": tn},
-                "avg_miss_latency_ms": avg_miss,
-                "p95_miss_latency_ms": p95_miss,
-                "avg_hit_latency_ms": avg_hit,
-                "cost_incurred_usd": cost_incurred,
-                "cost_without_cache_usd": cost_without_cache,
-                "records": [asdict(r) for r in records],
-            },
-            f,
-            indent=2,
+def print_round_summary(round_no: int, metrics: dict, threshold_state: dict | None) -> None:
+    cm = metrics["confusion_matrix"]
+    threshold_bits = ""
+    if threshold_state is not None:
+        threshold_bits = (
+            f"  threshold={threshold_state['threshold']:.3f}"
+            f"  est.fp_rate={threshold_state['estimated_false_positive_rate']:.1%}"
+            f"  verified={threshold_state['verified_samples']}"
         )
-    print(f"\nFull results written to {out_path}")
+    print(
+        f"round {round_no:>2}: precision={metrics['cache_precision']:.1%}  "
+        f"recall={metrics['cache_recall']:.1%}  f1={metrics['cache_f1']:.1%}  "
+        f"TP={cm['tp']} FP={cm['fp']} FN={cm['fn']} TN={cm['tn']}{threshold_bits}"
+    )
+
+
+def run(args: argparse.Namespace) -> None:
+    client = httpx.Client(base_url=args.gateway_url, timeout=120)
+
+    health = client.get("/health")
+    health.raise_for_status()
+
+    api_key = args.api_key or get_or_create_api_key(client, args.admin_key)
+    auth_headers = {"Authorization": f"Bearer {api_key}"}
+
+    seen_clusters: set[str] = set()
+    seen_exact_prompts: set[str] = set()
+    rounds: list[dict] = []
+    all_records: list[RequestRecord] = []
+
+    for round_no in range(1, args.rounds + 1):
+        plan = build_traffic(args.requests, args.confuser_rate, args.seed + round_no)
+        records = send_round(client, auth_headers, args.model, plan, seen_clusters, seen_exact_prompts, round_no)
+        all_records.extend(records)
+        metrics = compute_metrics(records)
+        threshold_state = fetch_threshold_state(client, args.model)
+        print_round_summary(round_no, metrics, threshold_state)
+        rounds.append(
+            {
+                "round": round_no,
+                "threshold_state": threshold_state,
+                **metrics,
+                "records": [asdict(r) for r in records],
+            }
+        )
+
+    final = rounds[-1]
+    # Aggregated across every round: a converged late round can easily have
+    # zero cache misses at all (nothing left to compare latency/cost
+    # against), so the last round alone isn't a meaningful latency/cost
+    # summary even though it's the right place to read final precision/
+    # recall/threshold from.
+    aggregate = compute_metrics(all_records)
+
+    print("\n" + "=" * 60)
+    print(f"FINAL RESULT (round {final['round']}/{args.rounds}; latency/cost aggregated across all rounds)")
+    print("=" * 60)
+    print(f"  precision (final round)  : {final['cache_precision']:.1%}")
+    print(f"  recall (final round)     : {final['cache_recall']:.1%}")
+    print(f"  f1 (final round)         : {final['cache_f1']:.1%}")
+    if aggregate["avg_hit_latency_ms"] == aggregate["avg_hit_latency_ms"]:  # not NaN
+        print(f"  avg cache-miss latency   : {aggregate['avg_miss_latency_ms']:.0f} ms")
+        print(f"  avg cache-hit latency    : {aggregate['avg_hit_latency_ms']:.0f} ms")
+        if aggregate["avg_hit_latency_ms"]:
+            speedup = aggregate["avg_miss_latency_ms"] / aggregate["avg_hit_latency_ms"]
+            print(f"  speedup on a cache hit   : {speedup:.1f}x")
+    if aggregate["cost_without_cache_usd"]:
+        reduction = 1 - aggregate["cost_incurred_usd"] / aggregate["cost_without_cache_usd"]
+        print(f"  cost reduction           : {reduction:.1%}")
+    if final["threshold_state"] is not None:
+        print(f"  adaptive threshold       : {final['threshold_state']['threshold']:.3f}")
+        print(f"  estimated FP rate        : {final['threshold_state']['estimated_false_positive_rate']:.1%}")
+
+    if args.rounds > 1:
+        print("\nPer-round precision/recall/threshold (see output JSON for full series):")
+        for r in rounds:
+            print_round_summary(r["round"], r, r["threshold_state"])
+
+    with open(args.output, "w") as f:
+        json.dump({"model": args.model, "aggregate": aggregate, "rounds": rounds}, f, indent=2)
+    print(f"\nFull results written to {args.output}")
 
 
 def main() -> None:
@@ -211,7 +286,8 @@ def main() -> None:
     parser.add_argument("--admin-key", default="change-me-admin-key")
     parser.add_argument("--api-key", default=None, help="Skip key creation and use this gateway API key directly")
     parser.add_argument("--model", default="llama3")
-    parser.add_argument("--requests", type=int, default=300)
+    parser.add_argument("--requests", type=int, default=300, help="Requests per round")
+    parser.add_argument("--rounds", type=int, default=1, help="Repeat the traffic plan N times to show convergence")
     parser.add_argument("--confuser-rate", type=float, default=0.15, help="Fraction of traffic that is a confuser")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--output", default="benchmark_results.json")

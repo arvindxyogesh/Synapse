@@ -1,4 +1,5 @@
 import json
+import random
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -8,13 +9,17 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.auth import require_api_key
-from app.cache import CacheEntry, get_cache
+from app.background import fire_and_forget
+from app.cache import CacheEntry, get_cache, prompt_from_messages
+from app.config import get_settings
 from app.db import SessionLocal, get_db
+from app.judge import judge_same_intent
 from app.models import ApiKey, RequestLog
 from app.pricing import estimate_cost_usd
 from app.providers import run_completion, run_streaming_completion
 from app.ratelimit import RateLimiter, get_rate_limiter
 from app.schemas import ChatCompletionChoice, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, Usage
+from app.threshold_controller import get_threshold_controller
 
 router = APIRouter(prefix="/v1", tags=["gateway"])
 
@@ -60,6 +65,27 @@ def _log_and_bill(
     limiter.record_spend(api_key.id, cost_usd)
 
 
+async def _shadow_verify(model: str, source_prompt: str, new_prompt: str) -> None:
+    """Runs after a cache hit has already been served: asks an independent
+    LLM-judge whether the prompt that originally produced the cached
+    response and the prompt that just hit it are really asking the same
+    thing, and feeds the result into the per-model adaptive threshold
+    controller. Never raises -- a broken judge call must never surface
+    anywhere near a real request."""
+    try:
+        same_intent = await judge_same_intent(model, source_prompt, new_prompt)
+        get_threshold_controller().record_verification(model, is_false_positive=not same_intent)
+    except Exception:
+        pass
+
+
+def _maybe_shadow_verify(model: str, hit: CacheEntry, new_prompt: str) -> None:
+    if not hit.source_prompt:
+        return  # entry was cached before source_prompt existed -- nothing to compare against
+    if random.random() < get_settings().shadow_verify_sample_rate:
+        fire_and_forget(_shadow_verify(model, hit.source_prompt, new_prompt))
+
+
 @router.post("/chat/completions", response_model=ChatCompletionResponse)
 async def chat_completions(
     body: ChatCompletionRequest,
@@ -72,11 +98,13 @@ async def chat_completions(
 
     start = time.perf_counter()
     messages = [m.model_dump() for m in body.messages]
+    prompt = prompt_from_messages(messages)
     cache = get_cache()
-    hit = cache.lookup(body.model, messages)
+    threshold = get_threshold_controller().get_threshold(body.model)
+    hit = cache.lookup(body.model, messages, threshold=threshold)
 
     if body.stream:
-        return _stream_chat_completion(body, messages, hit, api_key, limiter, start)
+        return _stream_chat_completion(body, messages, prompt, hit, api_key, limiter, start)
 
     if hit:
         text, prompt_tokens, completion_tokens, provider, cached = (
@@ -86,6 +114,7 @@ async def chat_completions(
             "cache",
             True,
         )
+        _maybe_shadow_verify(body.model, hit, prompt)
     else:
         text, prompt_tokens, completion_tokens, provider = await run_completion(
             body.model, messages, body.temperature
@@ -126,6 +155,7 @@ def _sse(event: dict) -> str:
 def _stream_chat_completion(
     body: ChatCompletionRequest,
     messages: list[dict],
+    prompt: str,
     hit: CacheEntry | None,
     api_key: ApiKey,
     limiter: RateLimiter,
@@ -162,6 +192,7 @@ def _stream_chat_completion(
                 yield _chunk_event("", "cache", True, finish_reason="stop")
                 yield "data: [DONE]\n\n"
 
+                _maybe_shadow_verify(body.model, hit, prompt)
                 latency_ms = (time.perf_counter() - start) * 1000
                 _log_and_bill(
                     db, limiter, api_key, "cache", body.model, True,

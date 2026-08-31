@@ -33,7 +33,13 @@ def test_store_uses_ann_hset_when_vector_search_available():
     assert redis_mock.hset.called
     doc_key, kwargs = redis_mock.hset.call_args.args[0], redis_mock.hset.call_args.kwargs
     assert doc_key.startswith("cache:vec:llama3:")
-    assert set(kwargs["mapping"]) == {"embedding", "response_text", "prompt_tokens", "completion_tokens"}
+    assert set(kwargs["mapping"]) == {
+        "embedding",
+        "response_text",
+        "prompt_tokens",
+        "completion_tokens",
+        "source_prompt",
+    }
     # the linear-scan fallback path should not have been used
     redis_mock.lpush.assert_not_called()
 

@@ -39,6 +39,54 @@ dashboard shows exactly how much that's saving in real time. Responses can
 also be streamed token-by-token (SSE), and gateway keys can carry a
 per-minute rate limit and a monthly cost quota.
 
+## Adaptive cache threshold (self-tuning correctness)
+
+A semantic cache has one structural risk: at a fixed similarity threshold,
+a "close enough" match can be *wrong* -- e.g. reusing the answer to "How do
+I cancel my subscription?" for "How do I pause my subscription instead of
+cancelling?" is a real, damaging false positive, not just a missed
+optimization. Turning the threshold up to be safe throws away hit rate;
+turning it down to get more hits risks more of these.
+
+Rather than pick one fixed threshold and hope, `app/threshold_controller.py`
+tunes it online, per model, with a small closed-loop controller:
+
+1. A sample of cache hits (`SHADOW_VERIFY_SAMPLE_RATE`, default 20%) is
+   shadow-verified in the background, after the response has already been
+   served (so it never adds latency): an **independent LLM-judge**
+   (`app/judge.py`) is asked whether the prompt that originally produced
+   the cached response and the prompt that just hit it are actually
+   asking the same thing. This is a genuinely different signal from the
+   embedding similarity that produced the hit in the first place, so it
+   catches errors the embedding model itself missed. It falls back to a
+   deterministic stopword-filtered token-overlap heuristic when there's no
+   real model to ask (mock mode / Ollama unreachable) -- same
+   real-model-with-deterministic-fallback shape as `app/embeddings.py`, so
+   the whole thing is testable and demoable without a GPU.
+2. An EWMA of the observed false-positive rate drives the threshold up
+   (stricter) when it's above target, or back down (looser, more hits)
+   once it's comfortably under target -- in small, bounded, cooldown-gated
+   steps, the same "hold an operating metric near a target" shape as an
+   SLO-adaptive controller, applied here to cache *correctness* instead of
+   latency.
+
+State and results are visible at `GET /v1/stats/cache-threshold` and on
+the dashboard.
+
+**Measured, reproducible result** (`backend/scripts/benchmark.py --rounds`,
+mock mode + hash-embedding fallback -- see that flag's docstring to
+reproduce): starting from a deliberately loose threshold of 0.55 against
+Synapse's labeled cluster/confuser traffic generator, precision recovered
+from 96.3% to a sustained 100% within ~250 verified samples as the
+controller tightened the threshold from 0.55 to 0.80-0.82 in response to
+shadow-verified false positives, with recall *simultaneously* climbing
+from 84.6% to 100% as the cache filled in. Building this surfaced two real
+bugs worth naming rather than hiding: an EWMA tuned too fast (alpha=0.3,
+~3-sample memory) silently underestimated a real ~15% false-positive rate
+down to ~0%, and the benchmark harness's own ground truth mislabeled
+repeated confuser prompts as false positives. Both are fixed in the
+current code (see the git history for the diagnostic process).
+
 ## Stack
 
 | Layer | Tech |
@@ -46,6 +94,7 @@ per-minute rate limit and a monthly cost quota.
 | Model serving | [Ollama](https://ollama.com) (local, open-weight models) with an automatic mock-provider fallback |
 | Backend | FastAPI, SQLAlchemy, Alembic |
 | Cache | Redis, with ANN vector search (Query Engine / RediSearch) when available, falling back to a linear scan otherwise |
+| Cache correctness | Adaptive per-model similarity threshold, tuned online by LLM-judge shadow verification |
 | Embeddings | [sentence-transformers](https://www.sbert.net/) (local, falls back to a hashing embedding if unavailable) |
 | Storage | Postgres (SQLite for local dev without Docker) |
 | Frontend | React + TypeScript (Vite), Tailwind CSS, Recharts |
@@ -151,6 +200,9 @@ backend/
     cache.py           semantic cache: exact match, ANN vector search
                         (Redis Query Engine) with linear-scan fallback
     embeddings.py      sentence-transformers embedder + hashing fallback
+    threshold_controller.py  adaptive per-model cache similarity threshold
+    judge.py            LLM-judge (+ heuristic fallback) shadow verification
+    background.py       fire-and-forget helper for shadow verification
     pricing.py         cost estimation per model
     auth.py            API key issuance/verification
     ratelimit.py        per-key rate limiting (req/min) + monthly $ quotas
@@ -159,10 +211,15 @@ backend/
       gateway.py       POST /v1/chat/completions (streaming + non-streaming)
       admin.py         API key CRUD + rate limit/quota updates (admin-key protected)
       stats.py         summary / timeseries / provider breakdown / request log
+                        + cache-threshold (adaptive controller state)
   tests/
+  scripts/
+    benchmark.py       cache precision/recall/F1 vs a live gateway, with
+                        --rounds to show the adaptive threshold converging
 frontend/
   src/
-    pages/             Dashboard, Playground (live chat), Requests, ApiKeys
+    pages/             Dashboard (incl. adaptive threshold panel),
+                        Playground (live chat), Requests, ApiKeys
     api/client.ts      typed fetch wrapper
 ```
 
@@ -172,3 +229,11 @@ frontend/
   algorithm if bursts right at the minute boundary start to matter.
 - Multi-provider support beyond Ollama (e.g. vLLM, llama.cpp server).
 - Alerting on quota/rate-limit thresholds instead of just blocking at 100%.
+- Re-run the adaptive-threshold benchmark against real Ollama + GPU serving
+  and a real sentence-transformers embedder (not the hashing fallback) to
+  see how the convergence numbers above hold up with a genuinely semantic
+  embedding space instead of bag-of-words.
+- A controlled ANN-vs-linear-scan latency/throughput benchmark as cache
+  size grows (1k/10k/100k entries) -- the vector index exists, but its
+  payoff at scale isn't measured yet.
+- Load/concurrency testing (p50/p95/p99 under N concurrent users).

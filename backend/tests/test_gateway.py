@@ -54,3 +54,20 @@ def test_stats_summary_reflects_requests(client, api_key):
     resp = client.get("/v1/stats/summary")
     assert resp.status_code == 200
     assert resp.json()["total_requests"] >= 1
+
+
+def test_cache_threshold_endpoint_lists_verified_models(client):
+    from app.threshold_controller import get_threshold_controller
+
+    get_threshold_controller().record_verification("stats-endpoint-model", is_false_positive=False)
+
+    resp = client.get("/v1/stats/cache-threshold")
+    assert resp.status_code == 200
+    models = {row["model"] for row in resp.json()}
+    assert "stats-endpoint-model" in models
+
+
+def test_cache_threshold_endpoint_empty_when_nothing_verified(client):
+    resp = client.get("/v1/stats/cache-threshold")
+    assert resp.status_code == 200
+    assert resp.json() == []

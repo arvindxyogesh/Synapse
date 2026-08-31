@@ -1,4 +1,11 @@
-import type { ApiKey, ProviderBreakdown, RequestLogEntry, StatsSummary, TimeseriesPoint } from "../types";
+import type {
+  ApiKey,
+  CacheThresholdState,
+  ProviderBreakdown,
+  RequestLogEntry,
+  StatsSummary,
+  TimeseriesPoint,
+} from "../types";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -18,6 +25,7 @@ export const api = {
   getProviderBreakdown: (hours = 24) => request<ProviderBreakdown[]>(`/v1/stats/providers?hours=${hours}`),
   getRequests: (limit = 50, offset = 0) =>
     request<RequestLogEntry[]>(`/v1/stats/requests?limit=${limit}&offset=${offset}`),
+  getCacheThresholdState: () => request<CacheThresholdState[]>("/v1/stats/cache-threshold"),
 
   listApiKeys: (adminKey: string) => request<ApiKey[]>("/v1/admin/keys", { headers: { "x-admin-key": adminKey } }),
   createApiKey: (

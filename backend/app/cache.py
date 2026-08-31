@@ -13,6 +13,10 @@ queries. Two implementations back that similarity search:
   vector search module isn't loaded -- e.g. plain `redis:7-alpine`, or
   fakeredis in tests -- so the cache (and the whole gateway) keeps working
   with zero extra setup.
+
+The similarity threshold isn't fixed: callers may pass a per-model
+override (see app/threshold_controller.py), which is how the adaptive
+controller actually changes lookup behavior.
 """
 
 import hashlib
@@ -34,11 +38,20 @@ MAX_CANDIDATES_PER_MODEL = 200
 ANN_CANDIDATE_KEY_PREFIX = "cache:vec"
 
 
+def prompt_from_messages(messages: list[dict]) -> str:
+    return " ".join(m["content"] for m in messages if m["role"] == "user")
+
+
 @dataclass
 class CacheEntry:
     response_text: str
     prompt_tokens: int
     completion_tokens: int
+    # The prompt that produced this entry -- absent for entries stored
+    # before this field existed. Lets a cache *hit* be shadow-verified
+    # against the query that's currently arriving (app/judge.py): were
+    # source_prompt and the new prompt actually asking the same thing?
+    source_prompt: str = ""
 
 
 class SemanticCache:
@@ -56,9 +69,6 @@ class SemanticCache:
             return True
         except Exception:
             return False
-
-    def _prompt_key(self, messages: list[dict]) -> str:
-        return " ".join(m["content"] for m in messages if m["role"] == "user")
 
     def _exact_key(self, model: str, prompt: str) -> str:
         digest = hashlib.sha256(prompt.strip().lower().encode()).hexdigest()
@@ -116,12 +126,12 @@ class SemanticCache:
             self._ann_supported = False
             return False
 
-    def _ann_lookup(self, model: str, query_vec: np.ndarray) -> CacheEntry | None:
+    def _ann_lookup(self, model: str, query_vec: np.ndarray, threshold: float) -> CacheEntry | None:
         dim = query_vec.shape[0]
         query = (
             Query("*=>[KNN 1 @embedding $vec AS score]")
             .sort_by("score")
-            .return_fields("score", "response_text", "prompt_tokens", "completion_tokens")
+            .return_fields("score", "response_text", "prompt_tokens", "completion_tokens", "source_prompt")
             .dialect(2)
         )
         params = {"vec": query_vec.astype("float32").tobytes()}
@@ -138,12 +148,13 @@ class SemanticCache:
         # HNSW + COSINE distance metric: score is cosine *distance*, so
         # similarity = 1 - distance.
         similarity = 1.0 - float(doc.score)
-        if similarity < self._threshold:
+        if similarity < threshold:
             return None
         return CacheEntry(
             response_text=doc.response_text,
             prompt_tokens=int(doc.prompt_tokens),
             completion_tokens=int(doc.completion_tokens),
+            source_prompt=getattr(doc, "source_prompt", ""),
         )
 
     def _ann_store(self, model: str, prompt: str, query_vec: np.ndarray, entry: CacheEntry) -> None:
@@ -156,13 +167,14 @@ class SemanticCache:
                 "response_text": entry.response_text,
                 "prompt_tokens": entry.prompt_tokens,
                 "completion_tokens": entry.completion_tokens,
+                "source_prompt": prompt,
             },
         )
         self._redis.expire(doc_key, self._ttl)
 
     # -- Linear scan (fallback) ----------------------------------------------
 
-    def _linear_scan_lookup(self, model: str, query_vec: np.ndarray) -> CacheEntry | None:
+    def _linear_scan_lookup(self, model: str, query_vec: np.ndarray, threshold: float) -> CacheEntry | None:
         candidate_ids = self._redis.lrange(self._candidates_key(model), 0, MAX_CANDIDATES_PER_MODEL - 1)
         best_score, best_entry = 0.0, None
         for entry_id in candidate_ids:
@@ -174,11 +186,12 @@ class SemanticCache:
             if score > best_score:
                 best_score, best_entry = score, record
 
-        if best_entry and best_score >= self._threshold:
+        if best_entry and best_score >= threshold:
             return CacheEntry(
                 response_text=best_entry["response_text"],
                 prompt_tokens=best_entry["prompt_tokens"],
                 completion_tokens=best_entry["completion_tokens"],
+                source_prompt=best_entry.get("source_prompt", ""),
             )
         return None
 
@@ -190,6 +203,7 @@ class SemanticCache:
                 "prompt_tokens": entry.prompt_tokens,
                 "completion_tokens": entry.completion_tokens,
                 "embedding": _encode_vec(query_vec),
+                "source_prompt": prompt,
             }
         )
         self._redis.set(f"cache:entry:{entry_id}", full_payload, ex=self._ttl)
@@ -200,8 +214,9 @@ class SemanticCache:
 
     # -- Public API -----------------------------------------------------------
 
-    def lookup(self, model: str, messages: list[dict]) -> CacheEntry | None:
-        prompt = self._prompt_key(messages)
+    def lookup(self, model: str, messages: list[dict], threshold: float | None = None) -> CacheEntry | None:
+        effective_threshold = self._threshold if threshold is None else threshold
+        prompt = prompt_from_messages(messages)
 
         exact = self._redis.get(self._exact_key(model, prompt))
         if exact:
@@ -210,16 +225,17 @@ class SemanticCache:
 
         query_vec = self._embedder.embed(prompt)
         if self._ensure_index(model, query_vec.shape[0]):
-            return self._ann_lookup(model, query_vec)
-        return self._linear_scan_lookup(model, query_vec)
+            return self._ann_lookup(model, query_vec, effective_threshold)
+        return self._linear_scan_lookup(model, query_vec, effective_threshold)
 
     def store(self, model: str, messages: list[dict], entry: CacheEntry) -> None:
-        prompt = self._prompt_key(messages)
+        prompt = prompt_from_messages(messages)
         exact_payload = json.dumps(
             {
                 "response_text": entry.response_text,
                 "prompt_tokens": entry.prompt_tokens,
                 "completion_tokens": entry.completion_tokens,
+                "source_prompt": prompt,
             }
         )
         self._redis.set(self._exact_key(model, prompt), exact_payload, ex=self._ttl)

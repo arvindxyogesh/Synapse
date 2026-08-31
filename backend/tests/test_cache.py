@@ -29,3 +29,28 @@ def test_semantically_similar_prompt_hits_via_embedding_fallback():
     near_dupe = [{"role": "user", "content": "capital of france capital of france capital of france"}]
     hit = cache.lookup("llama3", near_dupe)
     assert hit is not None
+
+
+def test_lookup_returns_source_prompt_for_shadow_verification():
+    cache = get_cache()
+    messages = [{"role": "user", "content": "how do I export my data"}]
+    cache.store("llama3", messages, CacheEntry("Go to Settings > Export.", 6, 6))
+
+    hit = cache.lookup("llama3", messages)
+    assert hit.source_prompt == "how do I export my data"
+
+
+def test_threshold_override_controls_hit_vs_miss():
+    cache = get_cache()
+    stored = [{"role": "user", "content": "capital of france capital of france capital of germany"}]
+    cache.store("threshold-test-model", stored, CacheEntry("Paris-ish.", 5, 3))
+
+    # Partial bag-of-words overlap with the stored prompt -- similar but
+    # not identical.
+    query = [{"role": "user", "content": "capital of france capital of spain capital of italy"}]
+
+    # A near-zero threshold should accept any non-trivial similarity.
+    assert cache.lookup("threshold-test-model", query, threshold=0.01) is not None
+    # A maximal threshold should reject anything short of a bit-identical
+    # embedding.
+    assert cache.lookup("threshold-test-model", query, threshold=0.999999) is None
