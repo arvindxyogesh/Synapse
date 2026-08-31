@@ -16,7 +16,11 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    # redis-stack-server bundles the Query Engine (RediSearch) module used
+    # for ANN vector search in the semantic cache (app/cache.py). Plain
+    # redis:7-alpine also works -- the cache auto-detects the module isn't
+    # loaded and falls back to a linear-scan similarity search instead.
+    image: redis/redis-stack-server:7.4.0-v3
     ports:
       - "6379:6379"
     healthcheck:

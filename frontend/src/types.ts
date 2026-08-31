@@ -39,4 +39,12 @@ export interface ApiKey {
   name: string;
   key_prefix: string;
   revoked: boolean;
+  rate_limit_per_minute: number | null;
+  monthly_quota_usd: number | null;
+  quota_spent_usd: number;
+}
+
+export interface ChatMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
 }

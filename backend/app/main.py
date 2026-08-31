@@ -2,9 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import admin, gateway, stats
-from app.db import Base, engine
 
-Base.metadata.create_all(bind=engine)
+# Schema is managed by Alembic migrations (see alembic/ and
+# `alembic upgrade head`), not create_all-on-startup -- run migrations
+# before starting the app (the Docker image's CMD does this automatically).
 
 app = FastAPI(
     title="Synapse",
@@ -17,6 +18,10 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    # Without this, browser JS can't read x-cache/x-provider off the
+    # response (the streaming chat endpoint also echoes them inside the
+    # SSE payload itself, so this is a belt-and-suspenders fix).
+    expose_headers=["x-cache", "x-provider"],
 )
 
 app.include_router(gateway.router)

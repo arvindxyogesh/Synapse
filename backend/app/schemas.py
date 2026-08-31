@@ -13,6 +13,7 @@ class ChatCompletionRequest(BaseModel):
     messages: list[ChatMessage]
     temperature: float = 0.7
     max_tokens: int | None = None
+    stream: bool = False
 
 
 class ChatCompletionChoice(BaseModel):
@@ -40,12 +41,23 @@ class ChatCompletionResponse(BaseModel):
 
 class ApiKeyCreateRequest(BaseModel):
     name: str
+    rate_limit_per_minute: int | None = Field(default=None, ge=1, description="Requests/minute; null = unlimited")
+    monthly_quota_usd: float | None = Field(default=None, ge=0, description="Estimated $/month; null = unlimited")
+
+
+class ApiKeyUpdateRequest(BaseModel):
+    rate_limit_per_minute: int | None = Field(default=None, ge=1)
+    monthly_quota_usd: float | None = Field(default=None, ge=0)
+    clear_rate_limit: bool = False
+    clear_monthly_quota: bool = False
 
 
 class ApiKeyCreateResponse(BaseModel):
     id: str
     name: str
     api_key: str  # returned once, at creation time only
+    rate_limit_per_minute: int | None
+    monthly_quota_usd: float | None
 
 
 class ApiKeyOut(BaseModel):
@@ -53,6 +65,9 @@ class ApiKeyOut(BaseModel):
     name: str
     key_prefix: str
     revoked: bool
+    rate_limit_per_minute: int | None
+    monthly_quota_usd: float | None
+    quota_spent_usd: float = 0.0
 
     model_config = ConfigDict(from_attributes=True)
 

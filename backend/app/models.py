@@ -25,6 +25,10 @@ class ApiKey(Base):
     revoked: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
+    # None on either means "unlimited" for that dimension.
+    rate_limit_per_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    monthly_quota_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     requests: Mapped[list["RequestLog"]] = relationship(back_populates="api_key")
 
 

@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import Nav from "./components/Nav";
 import ApiKeys from "./pages/ApiKeys";
 import Dashboard from "./pages/Dashboard";
+import Playground from "./pages/Playground";
 import Requests from "./pages/Requests";
 
 export default function App() {
@@ -12,6 +13,7 @@ export default function App() {
       <main className="mx-auto max-w-6xl px-6 py-8">
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/playground" element={<Playground />} />
           <Route path="/requests" element={<Requests />} />
           <Route path="/api-keys" element={<ApiKeys />} />
         </Routes>

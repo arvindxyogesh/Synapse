@@ -11,6 +11,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  baseUrl: BASE_URL,
+
   getSummary: (hours = 24) => request<StatsSummary>(`/v1/stats/summary?hours=${hours}`),
   getTimeseries: (hours = 24) => request<TimeseriesPoint[]>(`/v1/stats/timeseries?hours=${hours}`),
   getProviderBreakdown: (hours = 24) => request<ProviderBreakdown[]>(`/v1/stats/providers?hours=${hours}`),
@@ -18,12 +20,36 @@ export const api = {
     request<RequestLogEntry[]>(`/v1/stats/requests?limit=${limit}&offset=${offset}`),
 
   listApiKeys: (adminKey: string) => request<ApiKey[]>("/v1/admin/keys", { headers: { "x-admin-key": adminKey } }),
-  createApiKey: (adminKey: string, name: string) =>
+  createApiKey: (
+    adminKey: string,
+    name: string,
+    rateLimitPerMinute: number | null,
+    monthlyQuotaUsd: number | null,
+  ) =>
     request<{ id: string; name: string; api_key: string }>("/v1/admin/keys", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({
+        name,
+        rate_limit_per_minute: rateLimitPerMinute,
+        monthly_quota_usd: monthlyQuotaUsd,
+      }),
     }),
   revokeApiKey: (adminKey: string, id: string) =>
     request<ApiKey>(`/v1/admin/keys/${id}/revoke`, { method: "POST", headers: { "x-admin-key": adminKey } }),
+  updateApiKeyLimits: (
+    adminKey: string,
+    id: string,
+    body: {
+      rate_limit_per_minute?: number | null;
+      monthly_quota_usd?: number | null;
+      clear_rate_limit?: boolean;
+      clear_monthly_quota?: boolean;
+    },
+  ) =>
+    request<ApiKey>(`/v1/admin/keys/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+      body: JSON.stringify(body),
+    }),
 };
