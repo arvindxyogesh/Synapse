@@ -29,7 +29,14 @@ class Usage(BaseModel):
 
 
 class ChatCompletionResponse(BaseModel):
+    # `object`/`created` (+ id/model/choices/usage below) match the OpenAI
+    # Chat Completions response shape exactly, so the real `openai` SDK
+    # works against this endpoint unmodified -- point it at
+    # base_url=".../v1" with a gateway API key as api_key. provider/
+    # cached/cost_usd/latency_ms are additive extensions the SDK ignores.
     id: str
+    object: str = "chat.completion"
+    created: int
     model: str
     provider: str
     cached: bool

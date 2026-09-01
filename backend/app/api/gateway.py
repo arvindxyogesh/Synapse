@@ -134,6 +134,7 @@ async def chat_completions(
 
     return ChatCompletionResponse(
         id=str(uuid.uuid4()),
+        created=int(time.time()),
         model=body.model,
         provider=provider,
         cached=cached,
@@ -172,6 +173,7 @@ def _stream_chat_completion(
             {
                 "id": completion_id,
                 "object": "chat.completion.chunk",
+                "created": int(time.time()),
                 "model": body.model,
                 "provider": provider,
                 "cached": cached,

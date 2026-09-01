@@ -19,3 +19,6 @@ pytest==8.3.3
 pytest-asyncio==0.24.0
 fakeredis==2.24.1
 ruff==0.6.9
+# Test-only: proves /v1/chat/completions is drop-in compatible with the
+# real OpenAI SDK, not just shape-similar (see tests/test_openai_compat.py).
+openai==1.51.0

@@ -1,11 +1,56 @@
 # Synapse
 
-A memory layer for your LLM calls: a full-stack gateway that sits in front
-of open-weight LLMs (served locally via [Ollama](https://ollama.com)), adds
-**semantic response caching** with ANN vector search, **streaming**
-completions, **per-key rate limits and usage quotas**, and a live
-**observability dashboard**. Everything in this stack is free and
-open-source — no paid API keys required to run it end-to-end.
+[![CI](https://github.com/arvindxyogesh/Synapse/actions/workflows/ci.yml/badge.svg)](https://github.com/arvindxyogesh/Synapse/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+A self-hosted LLM gateway you drop in front of your app with a one-line
+change. Point the **real `openai` SDK** (Python or JS, unmodified) at your
+Synapse instance instead of api.openai.com, and you get semantic response
+caching, cost/latency tracking, per-key rate limits and quotas, and a live
+observability dashboard — for open-weight models served locally via
+[Ollama](https://ollama.com), for free, fully self-hosted, no data leaving
+your own infrastructure.
+
+```python
+import openai
+
+client = openai.OpenAI(
+    api_key="llmgw_...",                    # a Synapse gateway key, see Quickstart
+    base_url="http://localhost:8000/v1",    # <- the only line that changes
+)
+
+resp = client.chat.completions.create(
+    model="llama3",
+    messages=[{"role": "user", "content": "hello"}],
+)
+print(resp.choices[0].message.content)
+# send the exact same request again: cost $0, latency in single-digit ms,
+# served from Synapse's semantic cache instead of hitting the model again
+```
+
+That's not a claim about shape-compatibility — `tests/test_openai_compat.py`
+runs the actual `openai` Python package against the app and asserts on its
+typed response objects, both for regular calls and streaming.
+
+## What makes this different from LiteLLM Proxy / Portkey / Helicone
+
+Those are mature, production-grade projects — this is a from-scratch,
+fully self-hosted reference implementation, not a drop-in replacement for
+any of them. Where it's distinctive: its semantic cache doesn't trust a
+single fixed similarity threshold. A **closed-loop controller**
+continuously shadow-verifies a sample of cache hits against an independent
+LLM-judge and adjusts the threshold online to hold a target false-positive
+rate — see [Adaptive cache threshold](#adaptive-cache-threshold-self-tuning-correctness)
+below, including honestly-reported results (what held up, what didn't,
+bugs found along the way) rather than just a claim that it works.
+
+| | Synapse | LiteLLM Proxy / Portkey / Helicone |
+|---|---|---|
+| OpenAI-compatible endpoint | ✅ | ✅ |
+| Self-hosted, open source | ✅ | Partially (OSS core + hosted/paid tiers) |
+| Semantic response caching | ✅ (ANN vector search) | Some support exact-match caching |
+| Self-tuning cache correctness | ✅ | ❌ (not aware of this in any of them) |
+| Maturity / production track record | Portfolio-stage | Production-grade, widely deployed |
 
 ```
                  ┌─────────────┐        ┌──────────────┐
@@ -29,7 +74,7 @@ open-source — no paid API keys required to run it end-to-end.
                  └────────────────┘
 ```
 
-## Why
+## How the caching works
 
 Every call to `POST /v1/chat/completions` is checked against a semantic
 cache before it reaches the model: an exact-hash check first, then a
@@ -107,6 +152,42 @@ network-blocked one above): an EWMA tuned too fast (alpha=0.3, ~3-sample
 memory) silently underestimated a real ~15% false-positive rate down to
 ~0%, and the benchmark harness's own ground truth mislabeled repeated
 confuser prompts as false positives. Both fixed in the current code.
+
+### Update: real GPU + real model results
+
+Re-ran on real hardware (8x H200, real network, real `llama3.1:8b` via
+Ollama, real `sentence-transformers` embeddings, real LLM-judge) instead
+of the mock/hash-fallback setup above. `GET /health` confirmed
+`"embedder_backend": "sentence-transformers"` -- the real model, not the
+fallback.
+
+- **Cold start vs. warm inference matters a lot and is easy to misreport.**
+  The very first request took 53.4s (one-time model load into VRAM); the
+  next three distinct (uncached) prompts averaged ~470ms. Only the warm
+  number is representative -- reporting the cold-start figure as "typical
+  latency" would have been misleading.
+- **Precision held up under a real LLM-judge**, not just the heuristic
+  fallback: 98-100% across 6 rounds of a real convergence run, with the
+  threshold correctly climbing (0.60 → 0.85) in response to real
+  shadow-verified false positives.
+- **Recall on genuinely-novel paraphrases (the `novel_only` metric) was
+  low and declining under the default target false-positive rate (5%)**:
+  70% → 31% → 21% → 0% → 12.5% → 12.5% across rounds. This is the
+  precision/recall tradeoff working as intended, not a bug -- holding a
+  tight false-positive budget costs recall on real paraphrases -- but it
+  means headline numbers like "122x speedup" from that run are earned
+  substantially by exact-repeat traffic, not broad semantic
+  generalization. A less repetitive production workload would likely see
+  real hit rate (and therefore real savings) meaningfully lower than that.
+- **An open question surfaced, not yet resolved**: aggregate cache-miss
+  latency in that run (1671ms) was ~3.5x higher than the manually-measured
+  warm baseline (~470ms), while `SHADOW_VERIFY_SAMPLE_RATE` was set to
+  100% for a fast convergence demo. Leading hypothesis: background
+  LLM-judge calls (real Ollama inference) were competing with regular
+  requests for the same model-serving slot, so "background" shadow
+  verification wasn't actually latency-free once it shared a bottleneck
+  with the request path. A follow-up run at the default 20% sampling rate
+  should confirm or rule this out -- not yet done as of this writing.
 
 ## Stack
 
@@ -208,7 +289,9 @@ Both run in CI on every push (`.github/workflows/ci.yml`). Tests build
 their schema straight from the SQLAlchemy models (no Alembic involved) and
 run against fakeredis, so the ANN cache branch is covered separately with a
 mocked Redis client (`tests/test_cache_ann.py`) since fakeredis doesn't
-implement the vector search commands.
+implement the vector search commands. `tests/test_openai_compat.py` runs
+the real `openai` SDK against the app in-process (via httpx's ASGI
+transport) to verify drop-in compatibility, not just a schema comparison.
 
 ## Project layout
 
@@ -247,14 +330,12 @@ frontend/
 ## Notes / possible next steps
 
 Highest-value next step, concretely: re-run
-`backend/scripts/benchmark.py --rounds` on a machine with real network
-access and Ollama, with `pip install -r requirements.txt` (the full one,
-which includes `sentence-transformers`) so `GET /health` reports
-`"embedder_backend": "sentence-transformers"` instead of
-`"hash-fallback"` -- then compare the "novel-only" precision/recall
-against the hash-fallback numbers documented above. A GPU speeds up
-Ollama inference but isn't required for this specific comparison; what's
-required is that huggingface.co isn't blocked.
+`backend/scripts/benchmark.py --rounds` at `SHADOW_VERIFY_SAMPLE_RATE=0.2`
+(the realistic default, vs. the 100% used for the fast convergence demo
+above) against the same real Ollama + real embeddings setup, and compare
+aggregate cache-miss latency to the ~470ms warm baseline -- confirms or
+rules out the background-judge-contention hypothesis in the "Update: real
+GPU + real model results" section above.
 
 Other next steps:
 - Swap linear TTL-window rate limiting for a sliding-window/token-bucket
@@ -262,8 +343,23 @@ Other next steps:
 - Multi-provider support beyond Ollama (e.g. vLLM, llama.cpp server).
 - Alerting on quota/rate-limit thresholds instead of just blocking at 100%.
 - A controlled ANN-vs-linear-scan latency/throughput benchmark as cache
-  size grows (1k/10k/100k entries) -- the vector index exists, but its
-  payoff at scale isn't measured yet.
-- Load/concurrency testing (p50/p95/p99 under N concurrent users), ideally
-  against real GPU-served Ollama so the numbers reflect real inference
-  queueing under load, not the mock provider's near-instant response.
+  size grows (1k/10k/100k entries) -- the vector index exists (and was
+  exercised for real via `redis/redis-stack-server` in the GPU run above),
+  but its payoff at scale isn't measured yet.
+- Load/concurrency testing (p50/p95/p99 under N concurrent users) against
+  real GPU-served Ollama, informed by whatever the shadow-verify
+  contention follow-up above finds.
+- Revisit `target_false_positive_rate` (currently 5%): the real-GPU run
+  showed a real precision/recall tradeoff at that setting -- worth
+  measuring whether a looser target (e.g. 10%) recovers meaningfully more
+  `novel_only` recall without letting precision slip further than
+  acceptable.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) — setup, test commands, and code
+style all in one short doc. Issues and PRs welcome.
+
+## License
+
+[MIT](LICENSE).
