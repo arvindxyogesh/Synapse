@@ -74,6 +74,32 @@ bugs found along the way) rather than just a claim that it works.
                  └────────────────┘
 ```
 
+## Screenshots
+
+<table>
+<tr><td width="50%">
+
+**Dashboard** — live request volume, cache hit rate, cost saved, latency,
+and the adaptive cache-threshold panel (per-model threshold, estimated
+false-positive rate vs. target, verified sample count).
+
+<img src="docs/screenshots/dashboard.png" alt="Synapse dashboard" width="100%">
+
+</td><td width="50%">
+
+**Playground** — chat through the gateway directly (streaming or not);
+`cache hit` / `provider: ...` is shown per response, live.
+
+<img src="docs/screenshots/playground.png" alt="Synapse playground" width="100%">
+
+</td></tr>
+</table>
+
+**API Keys** — create/revoke gateway keys, set or clear a per-minute rate
+limit and monthly USD quota, see live spend against it.
+
+<img src="docs/screenshots/api-keys.png" alt="Synapse API keys page" width="70%">
+
 ## How the caching works
 
 Every call to `POST /v1/chat/completions` is checked against a semantic
