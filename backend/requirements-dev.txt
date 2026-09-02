@@ -16,5 +16,5 @@ python-multipart==0.0.9
 
 pytest==8.3.3
 pytest-asyncio==0.24.0
-fakeredis==2.24.1
+fakeredis==2.29.0
 ruff==0.6.9

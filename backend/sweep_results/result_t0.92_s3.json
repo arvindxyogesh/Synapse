@@ -1,0 +1,2720 @@
+{
+  "requests": 0,
+  "model": "llama3",
+  "cache_precision": NaN,
+  "cache_recall": NaN,
+  "cache_f1": NaN,
+  "confusion_matrix": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "tn": 0
+  },
+  "avg_miss_latency_ms": NaN,
+  "p95_miss_latency_ms": NaN,
+  "avg_hit_latency_ms": NaN,
+  "cost_incurred_usd": 0,
+  "cost_without_cache_usd": 0,
+  "records": [
+    {
+      "prompt": "Is there a limit on how often I can call the API?",
+      "cluster_id": "rate_limits",
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 21.845663897693157,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Is there a free version available?",
+      "cluster_id": "free_tier",
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 7.770623080432415,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the rate limit on this API?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.7991969883441925,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 7.359946146607399,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I rotate my API key?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 7.386715151369572,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How is staging different from production?",
+      "cluster_id": "staging_vs_prod",
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 7.511225529015064,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How can I receive webhook events?",
+      "cluster_id": "webhooks_setup",
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 8.197957649827003,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I switch to a bigger plan?",
+      "cluster_id": "upgrade_plan",
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 7.687872275710106,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I get an API key?",
+      "cluster_id": "find_api_key",
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 7.539507932960987,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the way to export my account data?",
+      "cluster_id": "export_data",
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 7.612087763845921,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I forgot my password, how can I reset it?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.453256286680698,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.629849947988987,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I add a webhook endpoint?",
+      "cluster_id": "webhooks_setup",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.429185323417187,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I forgot my password, how can I reset it?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.6551055535674095,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I add a team member?",
+      "cluster_id": "add_team_member",
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 7.513560354709625,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I set up webhooks?",
+      "cluster_id": "webhooks_setup",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.4624186381697655,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 11.013546027243137,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I downgrade to a cheaper plan?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 7.733064703643322,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I authenticate my API requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 7.639510557055473,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.4925413355231285,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Why am I getting a 500 error?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 7.397492416203022,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.440653629601002,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I remove a team member?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 8.073648437857628,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I cancel my subscription?",
+      "cluster_id": "cancel_subscription",
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 7.617345079779625,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for configuring a webhook?",
+      "cluster_id": "webhooks_setup",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.578075863420963,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I get a copy of an old invoice?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 7.64100905507803,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I want to cancel my plan, how do I do that?",
+      "cluster_id": "cancel_subscription",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 8.196379989385605,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Is there a limit on how often I can call the API?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.5835855677723885,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How many requests per minute am I allowed to make?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.432767190039158,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How many requests per minute am I allowed to make?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.576546631753445,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.457553409039974,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I forgot my password, how can I reset it?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.352619431912899,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.84807263314724,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.018915377557278,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.857112981379032,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I deactivate my account temporarily?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.348112598061562,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I upgrade my plan?",
+      "cluster_id": "upgrade_plan",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.185731083154678,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I change my email address?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.398406811058521,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What are the API rate limits?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.274024024605751,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I roll back a production deploy?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.293505430221558,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What are the API rate limits?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.417170166969299,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How many requests per minute am I allowed to make?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.480150856077671,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Staging vs production, what's the difference?",
+      "cluster_id": "staging_vs_prod",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.236144341528416,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I forgot my password, how can I reset it?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.254777312278748,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What happens to in-flight requests during a deploy?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.461433134973049,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.297823041677475,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Where can I find my API key?",
+      "cluster_id": "find_api_key",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.9305989891290665,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.4666541293263435,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Why am I getting a 500 error?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.384551525115967,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What header do I need to authenticate?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.337614730000496,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How many requests per minute am I allowed to make?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.1752889305353165,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I rotate my API key?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.296999752521515,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.50407001376152,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What header do I need to authenticate?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.3673993572592735,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.3638826832175255,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I forgot my password, how can I reset it?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.271601654589176,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.04991165548563,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I call this from Python?",
+      "cluster_id": "python_support",
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.569245830178261,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I import data from a CSV?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.391001865267754,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Why am I getting a 500 error?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.28858245909214,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.285363808274269,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Where can I find my API key?",
+      "cluster_id": "find_api_key",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.403088569641113,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Do you accept credit cards?",
+      "cluster_id": "payment_methods",
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.463224068284035,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.501209922134876,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.327221170067787,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I deactivate my account temporarily?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.2334733083844185,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I set up webhooks?",
+      "cluster_id": "webhooks_setup",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.964373402297497,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Where do I go to see my API key?",
+      "cluster_id": "find_api_key",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.5909093245863914,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I switch to a bigger plan?",
+      "cluster_id": "upgrade_plan",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.350280717015266,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Staging vs production, what's the difference?",
+      "cluster_id": "staging_vs_prod",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.27517607063055,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I get a copy of an old invoice?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.393975578248501,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I deactivate my account temporarily?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.44123088568449,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I authenticate my API requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.31618220359087,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.307433359324932,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Is there a limit on how often I can call the API?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.266516633331776,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I keep getting HTTP 429, what's wrong?",
+      "cluster_id": "429_error",
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.312710233032703,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I upgrade my plan?",
+      "cluster_id": "upgrade_plan",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.157502695918083,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.495961919426918,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What separates the staging env from prod?",
+      "cluster_id": "staging_vs_prod",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.376765668392181,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for account deletion?",
+      "cluster_id": "delete_account",
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.405980326235294,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I authenticate my API requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.377987563610077,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process to upgrade my subscription?",
+      "cluster_id": "upgrade_plan",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.285037845373154,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.356288678944111,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 8.773500099778175,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How many requests per minute am I allowed to make?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.827676832675934,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How many requests per minute am I allowed to make?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.311059929430485,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I pause my subscription instead of cancelling?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 7.00026098638773,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.413010880351067,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I forgot my password, how can I reset it?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.374373100697994,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What are the API rate limits?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.286373361945152,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "My requests are failing with status 429, why?",
+      "cluster_id": "429_error",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.284331902861595,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I deactivate my account temporarily?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.274355575442314,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I pause my subscription instead of cancelling?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.380322389304638,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.450650282204151,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I authenticate my API requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.374353542923927,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I authenticate my API requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.284032016992569,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Does this support Python?",
+      "cluster_id": "python_support",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.887392140924931,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I roll back a production deploy?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.514573469758034,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.475573405623436,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How many requests per minute am I allowed to make?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.329204887151718,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's included in the enterprise plan?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.4336564391851425,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What payment methods do you accept?",
+      "cluster_id": "payment_methods",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.401567719876766,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I deactivate my account temporarily?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.398148834705353,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Is there a free tier?",
+      "cluster_id": "free_tier",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.410883739590645,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Is there a Python SDK?",
+      "cluster_id": "python_support",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.366269662976265,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.231081672012806,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How many requests per minute am I allowed to make?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.895188242197037,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.435804069042206,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I downgrade to a cheaper plan?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.30148034542799,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can I pay with PayPal?",
+      "cluster_id": "payment_methods",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.2095122411847115,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I authenticate my API requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.326613016426563,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can I download all my data?",
+      "cluster_id": "export_data",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.233238615095615,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Is there a limit on how often I can call the API?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.1500100418925285,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the auth method for calling the API?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.252300925552845,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What forms of payment are supported?",
+      "cluster_id": "payment_methods",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.445316597819328,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What are the API rate limits?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.217435002326965,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.8809157237410545,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I want to cancel my plan, how do I do that?",
+      "cluster_id": "cancel_subscription",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.500598043203354,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I deactivate my account temporarily?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.275029852986336,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What forms of payment are supported?",
+      "cluster_id": "payment_methods",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.200315430760384,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can I pay with PayPal?",
+      "cluster_id": "payment_methods",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.186279468238354,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.252415478229523,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's included in the enterprise plan?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.252250634133816,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What are the API rate limits?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.200211122632027,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.511014886200428,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I add a team member?",
+      "cluster_id": "add_team_member",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.346357986330986,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How can I stop my subscription?",
+      "cluster_id": "cancel_subscription",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.943900138139725,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.447908468544483,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I add a webhook endpoint?",
+      "cluster_id": "webhooks_setup",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.329947151243687,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.312345154583454,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I forgot my password, how can I reset it?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.2291426584124565,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I add a webhook endpoint?",
+      "cluster_id": "webhooks_setup",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.317193619906902,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I call this from Python?",
+      "cluster_id": "python_support",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.326478905975819,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.696951575577259,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the way to export my account data?",
+      "cluster_id": "export_data",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.3397688791155815,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process to cancel my subscription?",
+      "cluster_id": "cancel_subscription",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.2663014978170395,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I forgot my password, how can I reset it?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.016903720796108,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Staging vs production, what's the difference?",
+      "cluster_id": "staging_vs_prod",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.426465697586536,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I export my data?",
+      "cluster_id": "export_data",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.391176953911781,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.324919871985912,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What are the API rate limits?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.278404034674168,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I forgot my password, how can I reset it?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.185232661664486,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I change my email address?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.249686703085899,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I want to permanently delete my account, how?",
+      "cluster_id": "delete_account",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.3563743606209755,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I get a copy of an old invoice?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.2909601256251335,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the way to export my account data?",
+      "cluster_id": "export_data",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.371732801198959,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I forgot my password, how can I reset it?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.9000376388430595,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.2773339450359344,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I authenticate my API requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.210776045918465,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I test a webhook without triggering the real event?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.175725720822811,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I downgrade to a cheaper plan?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.289456970989704,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I change my email address?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.264481693506241,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I authenticate my API requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.194859743118286,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Is there a Node.js SDK?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.208351813256741,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process to cancel my subscription?",
+      "cluster_id": "cancel_subscription",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.294582039117813,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can I pay with PayPal?",
+      "cluster_id": "payment_methods",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.167596206068993,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.9045256823301315,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.249687634408474,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.218555383384228,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What are the API rate limits?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.260436028242111,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I authenticate my API requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.207654252648354,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I call this from Python?",
+      "cluster_id": "python_support",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.331085227429867,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's included in the enterprise plan?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.398838013410568,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How can I receive webhook events?",
+      "cluster_id": "webhooks_setup",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.231080740690231,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I call this from Python?",
+      "cluster_id": "python_support",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.248855032026768,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I switch to a bigger plan?",
+      "cluster_id": "upgrade_plan",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.072963587939739,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I forgot my password, how can I reset it?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.905512884259224,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Do you offer a free plan?",
+      "cluster_id": "free_tier",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.354000419378281,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What are the API rate limits?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.301666609942913,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Staging vs production, what's the difference?",
+      "cluster_id": "staging_vs_prod",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.336706690490246,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Do you offer a free plan?",
+      "cluster_id": "free_tier",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.354345008730888,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the rate limit on this API?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.24823197722435,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process to cancel my subscription?",
+      "cluster_id": "cancel_subscription",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.213217042386532,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.3309138640761375,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I pause my subscription instead of cancelling?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.3422564417123795,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the rate limit on this API?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.245612166821957,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Is there a free tier?",
+      "cluster_id": "free_tier",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 7.163594476878643,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the rate limit on this API?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.385338492691517,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What are the API rate limits?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.235497072339058,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How can I get a copy of my data?",
+      "cluster_id": "export_data",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.461757235229015,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How can I invite someone to my team?",
+      "cluster_id": "add_team_member",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.2003228813409805,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I remove a team member?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.161399185657501,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.206057965755463,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What does a 429 response mean?",
+      "cluster_id": "429_error",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.154138594865799,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for account deletion?",
+      "cluster_id": "delete_account",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.205366924405098,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Is there a limit on how often I can call the API?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.137760356068611,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I forgot my password, how can I reset it?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.762523204088211,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Is there a free tier?",
+      "cluster_id": "free_tier",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.332687102258205,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the rate limit on this API?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.4291562885046005,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I forgot my password, how can I reset it?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.313985213637352,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I get an API key?",
+      "cluster_id": "find_api_key",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.215223111212254,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What header do I need to authenticate?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.326439790427685,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Is there a limit on how often I can call the API?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.46184291690588,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What payment methods do you accept?",
+      "cluster_id": "payment_methods",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.388157606124878,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I forgot my password, how can I reset it?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.346960552036762,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Do you accept credit cards?",
+      "cluster_id": "payment_methods",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.261346861720085,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process to upgrade my subscription?",
+      "cluster_id": "upgrade_plan",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.305104121565819,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I remove a team member?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.349620409309864,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I want to permanently delete my account, how?",
+      "cluster_id": "delete_account",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.252468563616276,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I add authentication to my requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.861460395157337,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I remove a team member?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.407551467418671,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I add authentication to my requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.205117329955101,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I get a copy of an old invoice?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.1976853758096695,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.301655434072018,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I pause my subscription instead of cancelling?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.204794161021709,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Is there a Node.js SDK?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.217211484909058,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How is staging different from production?",
+      "cluster_id": "staging_vs_prod",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.230499595403671,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I can't find my API key, where is it?",
+      "cluster_id": "find_api_key",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.323426961898804,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What header do I need to authenticate?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.359109655022621,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I downgrade to a cheaper plan?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.8322112783789635,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Is there a free tier?",
+      "cluster_id": "free_tier",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.4190588891506195,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for adding a new team member?",
+      "cluster_id": "add_team_member",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.259065121412277,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I get a copy of an old invoice?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.373207084834576,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Why am I getting a 500 error?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.212964653968811,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Staging vs production, what's the difference?",
+      "cluster_id": "staging_vs_prod",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.115240976214409,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How can I get a copy of my data?",
+      "cluster_id": "export_data",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.156995892524719,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I want to cancel my plan, how do I do that?",
+      "cluster_id": "cancel_subscription",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.183735094964504,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What are the API rate limits?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.24371413141489,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the rate limit on this API?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.267429329454899,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What header do I need to authenticate?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.867343559861183,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.328200921416283,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What header do I need to authenticate?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.382094696164131,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can I use this with Python?",
+      "cluster_id": "python_support",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.2606483697891235,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What are the API rate limits?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.137666292488575,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I test a webhook without triggering the real event?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.248839199542999,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How can I get a copy of my data?",
+      "cluster_id": "export_data",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.146675907075405,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I authenticate my API requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.138826720416546,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What payment methods do you accept?",
+      "cluster_id": "payment_methods",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.386343389749527,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What header do I need to authenticate?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.261673755943775,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Why am I getting a 500 error?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.834241561591625,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What header do I need to authenticate?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.34735357016325,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I authenticate my API requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.334302946925163,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.5589770674705505,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Does this support Python?",
+      "cluster_id": "python_support",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.309187039732933,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Where can I find my API key?",
+      "cluster_id": "find_api_key",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.162152625620365,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Why am I getting a 500 error?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.307453848421574,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How is staging different from production?",
+      "cluster_id": "staging_vs_prod",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.3633061945438385,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Why am I getting a 429 error?",
+      "cluster_id": "429_error",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.1917537823319435,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What header do I need to authenticate?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.12445455044508,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.829642690718174,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process to cancel my subscription?",
+      "cluster_id": "cancel_subscription",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.505805999040604,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.367114372551441,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process to cancel my subscription?",
+      "cluster_id": "cancel_subscription",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.209036335349083,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Do you accept credit cards?",
+      "cluster_id": "payment_methods",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.226358003914356,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Do you accept credit cards?",
+      "cluster_id": "payment_methods",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.202182732522488,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process to cancel my subscription?",
+      "cluster_id": "cancel_subscription",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.292845122516155,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I get an API key?",
+      "cluster_id": "find_api_key",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.195911206305027,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.330457516014576,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.209639832377434,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the auth method for calling the API?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.857024505734444,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I invite a teammate?",
+      "cluster_id": "add_team_member",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.522740237414837,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How can I get a copy of my data?",
+      "cluster_id": "export_data",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.670371629297733,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Is there a Node.js SDK?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.438625976443291,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What header do I need to authenticate?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.299913860857487,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I add authentication to my requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.367811001837254,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What separates the staging env from prod?",
+      "cluster_id": "staging_vs_prod",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.457917392253876,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What are the API rate limits?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.257018074393272,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.210675463080406,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.225375458598137,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Where do I go to see my API key?",
+      "cluster_id": "find_api_key",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.930653005838394,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.387077271938324,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How many requests per minute am I allowed to make?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.375354714691639,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the difference between staging and production environments?",
+      "cluster_id": "staging_vs_prod",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.291409023106098,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I authenticate my API requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.176506169140339,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Do you accept credit cards?",
+      "cluster_id": "payment_methods",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.162263453006744,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What are the API rate limits?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.221347488462925,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What forms of payment are supported?",
+      "cluster_id": "payment_methods",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.3057877123355865,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I cancel my subscription?",
+      "cluster_id": "cancel_subscription",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.47827610373497,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the auth method for calling the API?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.29513431340456,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I set up webhooks?",
+      "cluster_id": "webhooks_setup",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.818979047238827,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I rotate my API key?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.382395513355732,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Where do I go to see my API key?",
+      "cluster_id": "find_api_key",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.4220428466796875,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I add authentication to my requests?",
+      "cluster_id": "auth_requests",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.249935366213322,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.192734465003014,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I can't find my API key, where is it?",
+      "cluster_id": "find_api_key",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.251309998333454,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I keep getting HTTP 429, what's wrong?",
+      "cluster_id": "429_error",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.1447396874427795,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the way to export my account data?",
+      "cluster_id": "export_data",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.191556341946125,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How can I stop my subscription?",
+      "cluster_id": "cancel_subscription",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.209585815668106,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the process for resetting a forgotten password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.391712464392185,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I want to permanently delete my account, how?",
+      "cluster_id": "delete_account",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.891288794577122,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.172523833811283,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "I forgot my password, how can I reset it?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.38914480805397,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.299734115600586,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I call this from Python?",
+      "cluster_id": "python_support",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.22484739869833,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I get a copy of an old invoice?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.222615018486977,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How many requests per minute am I allowed to make?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.079944781959057,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I cancel my subscription?",
+      "cluster_id": "cancel_subscription",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.222224794328213,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's included in the enterprise plan?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.217925809323788,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Is there a limit on how often I can call the API?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.33134413510561,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What payment methods do you accept?",
+      "cluster_id": "payment_methods",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.767517887055874,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.803818978369236,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.326529197394848,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I add a team member?",
+      "cluster_id": "add_team_member",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.276355125010014,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.246802397072315,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Where can I find my API key?",
+      "cluster_id": "find_api_key",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.248479709029198,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Why am I getting a 429 error?",
+      "cluster_id": "429_error",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.2470873817801476,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I test a webhook without triggering the real event?",
+      "cluster_id": null,
+      "expected_hit": false,
+      "actual_hit": false,
+      "latency_ms": 6.356177851557732,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "What's the rate limit on this API?",
+      "cluster_id": "rate_limits",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.356772966682911,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "How do I reset my password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.242593750357628,
+      "cost_usd": 0.0,
+      "status_code": 500
+    },
+    {
+      "prompt": "Can you walk me through resetting my account password?",
+      "cluster_id": "reset_password",
+      "expected_hit": true,
+      "actual_hit": false,
+      "latency_ms": 6.806030869483948,
+      "cost_usd": 0.0,
+      "status_code": 500
+    }
+  ]
+}

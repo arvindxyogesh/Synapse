@@ -1,0 +1,30 @@
+=== threshold=0.85 ===
+  seed=1
+  seed=2
+  seed=3
+=== threshold=0.90 ===
+  seed=1
+  seed=2
+  seed=3
+=== threshold=0.92 ===
+  seed=1
+  seed=2
+  seed=3
+=== threshold=0.95 ===
+  seed=1
+  seed=2
+  seed=3
+Sweep done. Aggregating...
+ threshold          precision             recall                 f1     cost reduction  n_seeds
+----------------------------------------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/savyo/Synapse/backend/scripts/aggregate_sweep.py", line 36, in <module>
+    print(f"{t:>10} {fmt(precision):>18} {fmt(recall):>18} {fmt(f1):>18} {fmt(cost_reduction):>18}  {len(runs)}")
+                     ^^^^^^^^^^^^^^
+  File "/home/savyo/Synapse/backend/scripts/aggregate_sweep.py", line 22, in fmt
+    std = statistics.stdev(vals) if len(vals) > 1 else 0.0
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/savyo/miniforge3/envs/synapse/lib/python3.11/statistics.py", line 922, in stdev
+    return _float_sqrt_of_frac(mss.numerator, mss.denominator)
+                               ^^^^^^^^^^^^^
+AttributeError: 'float' object has no attribute 'numerator'
