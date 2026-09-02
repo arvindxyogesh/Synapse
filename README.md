@@ -7,9 +7,12 @@ A self-hosted LLM gateway you drop in front of your app with a one-line
 change. Point the **real `openai` SDK** (Python or JS, unmodified) at your
 Synapse instance instead of api.openai.com, and you get semantic response
 caching, cost/latency tracking, per-key rate limits and quotas, and a live
-observability dashboard — for open-weight models served locally via
-[Ollama](https://ollama.com), for free, fully self-hosted, no data leaving
-your own infrastructure.
+observability dashboard — for open-weight models served locally, for free,
+fully self-hosted, no data leaving your own infrastructure. The serving
+backend is pluggable (`PROVIDER=ollama|vllm`): [Ollama](https://ollama.com)
+runs on CPU with zero setup and is the default demo path, or point it at
+[vLLM](https://github.com/vllm-project/vllm) for GPU-served throughput
+(continuous batching, PagedAttention) once you have a real workload.
 
 ```python
 import openai
@@ -54,9 +57,9 @@ bugs found along the way) rather than just a claim that it works.
 
 ```
                  ┌─────────────┐        ┌──────────────┐
-  client  ─────▶ │   FastAPI    │──────▶ │    Ollama     │  (local, free,
- (API key)       │   gateway    │        │ open models   │   open-weight)
-                 │ rate limits  │◀───────┤ llama3/mistral│
+  client  ─────▶ │   FastAPI    │──────▶ │ Ollama / vLLM │  (local, free,
+ (API key)       │   gateway    │        │ open models   │   open-weight,
+                 │ rate limits  │◀───────┤ llama3/mistral│  PROVIDER=...)
                  │ + quotas     │        └──────────────┘
                  └───┬──────┬───┘
                      │      │
@@ -131,7 +134,7 @@ tunes it online, per model, with a small closed-loop controller:
    embedding similarity that produced the hit in the first place, so it
    catches errors the embedding model itself missed. It falls back to a
    deterministic stopword-filtered token-overlap heuristic when there's no
-   real model to ask (mock mode / Ollama unreachable) -- same
+   real model to ask (mock mode / configured provider unreachable) -- same
    real-model-with-deterministic-fallback shape as `app/embeddings.py`, so
    the whole thing is testable and demoable without a GPU.
 2. An EWMA of the observed false-positive rate drives the threshold up
@@ -215,11 +218,60 @@ fallback.
   with the request path. A follow-up run at the default 20% sampling rate
   should confirm or rule this out -- not yet done as of this writing.
 
+### Update: real vLLM results (`PROVIDER=vllm`)
+
+Ran the same kind of validation against a real vLLM server instead of
+Ollama, on an H200-class GPU on the same machine as the run above, serving
+`Qwen/Qwen2.5-1.5B-Instruct` via `vllm serve` (see the environment note
+below for why not Docker), fronted by the gateway with `PROVIDER=vllm`.
+
+**End-to-end wiring confirmed manually first**: a `/v1/chat/completions`
+call returned `"provider":"vllm"`, a real completion, real usage (30
+prompt / 10 completion tokens), and 4396ms latency (first-request vLLM
+warmup -- the same cold-start effect noted above, just smaller since the
+model was already resident from `vllm serve` startup). The identical
+request repeated came back `"provider":"cache"`, `"cached":true`,
+`cost_usd: 0.0`, 1.77ms -- roughly a 2500x latency drop on that one pair.
+
+**`backend/scripts/benchmark.py`, 150 requests, single round, default
+config** (no stress-test threshold/sampling overrides, unlike the 6-round
+Ollama convergence demo above):
+
+- Precision 100%, recall 74%, F1 85.1% (TP=77, FP=0, FN=27, TN=46);
+  adaptive threshold moved 0.92 → 0.910 (14 shadow-verified samples, 0
+  false positives found).
+- **Novel-only recall collapsed to 12.9%** (4 of 31 novel true positives)
+  -- the same shape as the Ollama run's finding above, now reproduced with
+  a different serving engine *and* a much smaller model (1.5B vs 8B):
+  headline hit-rate numbers are earned substantially by exact-repeat
+  traffic, not broad semantic generalization.
+- Avg cache-miss latency 621ms, cache-hit 34ms (18.3x speedup on a hit),
+  51.3% cost reduction.
+
+**An open question, stated rather than smoothed over**: cache-miss latency
+here (621ms, a 1.5B model on vLLM) was *higher* than the Ollama run's warm
+baseline (~470ms, an 8B model) despite the much smaller model. This run
+doesn't distinguish between the plausible explanations -- vLLM engine
+overhead at this traffic pattern, a different physical GPU than the one
+used for the Ollama run, warmup not fully settled when the benchmark
+started -- so it's reported as an open question, not a claim either engine
+is faster. A controlled back-to-back comparison (same model, same GPU,
+both engines) is the natural follow-up and hasn't been done.
+
+**Environment note**: no Docker was available for this run (no root access
+on the shared host, and the daemon happened to be down) -- vLLM ran as a
+plain `vllm serve` process instead of the `docker-compose.yml` service,
+and Redis was swapped for `backend/scripts/run_fake_redis.py`'s
+pure-Python fake server. Both are fallback paths this repo already
+documents (see `docker compose`'s optional `vllm` profile and the
+Stack table's SQLite note above), not special accommodations invented for
+this run.
+
 ## Stack
 
 | Layer | Tech |
 |---|---|
-| Model serving | [Ollama](https://ollama.com) (local, open-weight models) with an automatic mock-provider fallback |
+| Model serving | Pluggable via `PROVIDER`: [Ollama](https://ollama.com) (default, CPU) or [vLLM](https://github.com/vllm-project/vllm) (GPU, OpenAI-compatible), with an automatic mock-provider fallback |
 | Backend | FastAPI, SQLAlchemy, Alembic |
 | Cache | Redis, with ANN vector search (Query Engine / RediSearch) when available, falling back to a linear scan otherwise |
 | Cache correctness | Adaptive per-model similarity threshold, tuned online by LLM-judge shadow verification |
@@ -244,10 +296,19 @@ docker compose up --build
 Engine module the semantic cache uses for ANN vector search, and the
 backend image runs `alembic upgrade head` on startup before serving traffic.
 
-If [Ollama](https://ollama.com) isn't running locally, the gateway
-automatically serves mock responses instead of erroring out — you can still
-exercise the whole cache/cost/dashboard pipeline with zero model setup. To
-use real open-weight models: `ollama pull llama3` then `ollama serve`.
+If the configured provider isn't running locally, the gateway automatically
+serves mock responses instead of erroring out — you can still exercise the
+whole cache/cost/dashboard pipeline with zero model setup. To use real
+open-weight models with the default backend: `ollama pull llama3` then
+`ollama serve`.
+
+To use vLLM instead (needs a CUDA GPU): set `PROVIDER=vllm` in `.env`, then
+either run `vllm serve <model> --port 8001` yourself, or bring up the
+optional GPU-profiled compose service: `docker compose --profile vllm up`
+(set `VLLM_MODEL` in `.env` to pick the model; defaults to a small
+Llama 3.2 instruct model). vLLM speaks the OpenAI chat-completions format
+natively, so `VLLMProvider` (`app/providers.py`) is close to passthrough —
+see it for exact-usage-token reporting via `stream_options.include_usage`.
 
 ### Option B — run backend/frontend directly
 
@@ -326,7 +387,8 @@ backend/
   alembic/            migrations (env.py reads DATABASE_URL from Settings)
   app/
     main.py           FastAPI app + router wiring
-    providers.py       Ollama client + mock fallback, incl. streaming
+    providers.py       Ollama + vLLM clients, pluggable via PROVIDER, with
+                        mock fallback, incl. streaming
     cache.py           semantic cache: exact match, ANN vector search
                         (Redis Query Engine) with linear-scan fallback
     embeddings.py      sentence-transformers embedder + hashing fallback
@@ -366,7 +428,15 @@ GPU + real model results" section above.
 Other next steps:
 - Swap linear TTL-window rate limiting for a sliding-window/token-bucket
   algorithm if bursts right at the minute boundary start to matter.
-- Multi-provider support beyond Ollama (e.g. vLLM, llama.cpp server).
+- vLLM support landed (`PROVIDER=vllm`, `app/providers.py`'s `VLLMProvider`)
+  and is now validated against a real vLLM server too, not just the mocked
+  transport in `tests/test_providers_vllm.py` -- see "Update: real vLLM
+  results" above. What that run didn't settle: a controlled back-to-back
+  comparison against Ollama (same model, same GPU, both engines) to
+  actually attribute the latency difference it surfaced, rather than the
+  different-model/possibly-different-GPU comparison done so far. Further
+  providers (llama.cpp server, etc.) would slot into the same
+  `BaseProvider` shape.
 - Alerting on quota/rate-limit thresholds instead of just blocking at 100%.
 - A controlled ANN-vs-linear-scan latency/throughput benchmark as cache
   size grows (1k/10k/100k entries) -- the vector index exists (and was
