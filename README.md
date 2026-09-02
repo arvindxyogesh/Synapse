@@ -218,6 +218,55 @@ fallback.
   with the request path. A follow-up run at the default 20% sampling rate
   should confirm or rule this out -- not yet done as of this writing.
 
+### Update: real vLLM results (`PROVIDER=vllm`)
+
+Ran the same kind of validation against a real vLLM server instead of
+Ollama, on an H200-class GPU on the same machine as the run above, serving
+`Qwen/Qwen2.5-1.5B-Instruct` via `vllm serve` (see the environment note
+below for why not Docker), fronted by the gateway with `PROVIDER=vllm`.
+
+**End-to-end wiring confirmed manually first**: a `/v1/chat/completions`
+call returned `"provider":"vllm"`, a real completion, real usage (30
+prompt / 10 completion tokens), and 4396ms latency (first-request vLLM
+warmup -- the same cold-start effect noted above, just smaller since the
+model was already resident from `vllm serve` startup). The identical
+request repeated came back `"provider":"cache"`, `"cached":true`,
+`cost_usd: 0.0`, 1.77ms -- roughly a 2500x latency drop on that one pair.
+
+**`backend/scripts/benchmark.py`, 150 requests, single round, default
+config** (no stress-test threshold/sampling overrides, unlike the 6-round
+Ollama convergence demo above):
+
+- Precision 100%, recall 74%, F1 85.1% (TP=77, FP=0, FN=27, TN=46);
+  adaptive threshold moved 0.92 → 0.910 (14 shadow-verified samples, 0
+  false positives found).
+- **Novel-only recall collapsed to 12.9%** (4 of 31 novel true positives)
+  -- the same shape as the Ollama run's finding above, now reproduced with
+  a different serving engine *and* a much smaller model (1.5B vs 8B):
+  headline hit-rate numbers are earned substantially by exact-repeat
+  traffic, not broad semantic generalization.
+- Avg cache-miss latency 621ms, cache-hit 34ms (18.3x speedup on a hit),
+  51.3% cost reduction.
+
+**An open question, stated rather than smoothed over**: cache-miss latency
+here (621ms, a 1.5B model on vLLM) was *higher* than the Ollama run's warm
+baseline (~470ms, an 8B model) despite the much smaller model. This run
+doesn't distinguish between the plausible explanations -- vLLM engine
+overhead at this traffic pattern, a different physical GPU than the one
+used for the Ollama run, warmup not fully settled when the benchmark
+started -- so it's reported as an open question, not a claim either engine
+is faster. A controlled back-to-back comparison (same model, same GPU,
+both engines) is the natural follow-up and hasn't been done.
+
+**Environment note**: no Docker was available for this run (no root access
+on the shared host, and the daemon happened to be down) -- vLLM ran as a
+plain `vllm serve` process instead of the `docker-compose.yml` service,
+and Redis was swapped for `backend/scripts/run_fake_redis.py`'s
+pure-Python fake server. Both are fallback paths this repo already
+documents (see `docker compose`'s optional `vllm` profile and the
+Stack table's SQLite note above), not special accommodations invented for
+this run.
+
 ## Stack
 
 | Layer | Tech |
@@ -380,12 +429,14 @@ Other next steps:
 - Swap linear TTL-window rate limiting for a sliding-window/token-bucket
   algorithm if bursts right at the minute boundary start to matter.
 - vLLM support landed (`PROVIDER=vllm`, `app/providers.py`'s `VLLMProvider`)
-  but is untested against a real vLLM server so far (only against a mocked
-  OpenAI-compatible transport in `tests/test_providers_vllm.py`) -- the
-  "Update: real GPU + real model results" numbers above are still an Ollama
-  run; a matching vLLM run (throughput/latency under continuous batching
-  vs. Ollama) is the natural next benchmark. Further providers
-  (llama.cpp server, etc.) would slot into the same `BaseProvider` shape.
+  and is now validated against a real vLLM server too, not just the mocked
+  transport in `tests/test_providers_vllm.py` -- see "Update: real vLLM
+  results" above. What that run didn't settle: a controlled back-to-back
+  comparison against Ollama (same model, same GPU, both engines) to
+  actually attribute the latency difference it surfaced, rather than the
+  different-model/possibly-different-GPU comparison done so far. Further
+  providers (llama.cpp server, etc.) would slot into the same
+  `BaseProvider` shape.
 - Alerting on quota/rate-limit thresholds instead of just blocking at 100%.
 - A controlled ANN-vs-linear-scan latency/throughput benchmark as cache
   size grows (1k/10k/100k entries) -- the vector index exists (and was
