@@ -1,6 +1,6 @@
 """Cost accounting for locally-served, open-weight models.
 
-There's no per-token API charge for Ollama/local inference -- the "cost" here
+There's no per-token API charge for local inference (Ollama or vLLM) -- the "cost" here
 is an estimated compute cost so the dashboard has a meaningful $ metric to
 show savings against (what an equivalent hosted API would have charged).
 Numbers are illustrative reference points, not billing-accurate.

@@ -11,7 +11,7 @@ prompts through POST /v1/chat/completions and reports:
   - cost: incurred vs. what a cache-less gateway would have spent, using
     the gateway's own cost model
 
-This requires a running gateway backed by a real model (Ollama) -- run it
+This requires a running gateway backed by a real model (Ollama or vLLM) -- run it
 against MOCK_MODE and every "latency" and "cost" number is meaningless
 (the mock provider is near-instant and free), though cache precision/
 recall is still valid since that only depends on the caching layer.

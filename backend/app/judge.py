@@ -8,7 +8,7 @@ my subscription instead of cancelling?" -- close in embedding space, very
 different correct answers).
 
 Falls back to a deterministic token-overlap heuristic whenever there's no
-real model to ask (mock mode, or Ollama unreachable) -- the same
+real model to ask (mock mode, or the configured provider unreachable) -- the same
 real-model-with-deterministic-fallback shape already used by
 app/embeddings.py, so the cache stays testable and demoable without a GPU.
 """

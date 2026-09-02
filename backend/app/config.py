@@ -8,9 +8,20 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./gateway.db"
     redis_url: str = "redis://localhost:6379/0"
 
-    # Open-weight model serving. Ollama (https://ollama.com) runs models like
-    # llama3/mistral locally for free -- no API key, no per-token cost.
+    # Open-weight model serving backend, selected by PROVIDER:
+    #   "ollama" (default) -- https://ollama.com, runs on CPU, zero GPU
+    #       setup, the default so the whole stack demos with `docker
+    #       compose up` alone.
+    #   "vllm" -- an OpenAI-compatible vLLM server (`vllm serve <model>`,
+    #       or the optional `vllm` service in docker-compose.yml, profile
+    #       "vllm"). Needs a CUDA GPU; in exchange gets vLLM's throughput
+    #       (continuous batching, PagedAttention) and features like
+    #       multi-LoRA serving that Ollama doesn't offer.
+    # Either way it's free/self-hosted -- no per-token API cost.
+    provider: str = "ollama"
     ollama_base_url: str = "http://localhost:11434"
+    vllm_base_url: str = "http://localhost:8001"
+    vllm_api_key: str | None = None
     default_model: str = "llama3"
 
     # Master key used to create/revoke gateway API keys via /v1/admin/*.
