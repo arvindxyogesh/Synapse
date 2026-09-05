@@ -55,3 +55,43 @@ monotonic behavior is the precondition for two pointers.
 once, and for each `num` check whether `target - num` has already been
 seen; if not, add `num` to the seen-set. Also O(n) time, but O(n) space
 instead of O(1) -- the price paid for not requiring sorted input.
+
+## Problem 2: Container With Most Water
+
+Given an array `height` where `height[i]` is the height of a vertical line
+at position `i`, find two lines that together with the x-axis form a
+container holding the most water. Return the max area.
+
+Example: `height = [1, 8, 6, 2, 5, 4, 8, 3, 7]` -> `49`
+(lines at index 1 and 8: `min(8, 7) * (8 - 1) = 49`)
+
+Note: unlike Problem 1, you **cannot** sort `height` first -- position is
+part of the answer here (width = `right - left`), not incidental. Sorting
+would permute indices and destroy the real distances between bars.
+
+### Solution
+
+```python
+def max_area(height: list[int]) -> int:
+    left, right = 0, len(height) - 1
+    best = 0
+    while left < right:
+        width = right - left
+        best = max(best, min(height[left], height[right]) * width)
+        if height[left] < height[right]:
+            left += 1
+        else:
+            right -= 1
+    return best
+```
+
+**Why move only the shorter pointer:** the container's area is capped by
+`min(height[left], height[right]) * width`. If you keep the shorter side
+fixed and move the taller side inward instead, width only shrinks and the
+height cap stays the same (or gets worse) -- so that move can never beat
+what you already have. Every container pairing the shorter pointer with
+anything closer than the current partner is therefore dominated, so it's
+safe to discard those possibilities entirely rather than checking both
+moves at each step.
+
+**Complexity:** O(n) time, O(1) space, versus O(n^2) brute force.
