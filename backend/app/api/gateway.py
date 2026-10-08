@@ -14,7 +14,7 @@ from app.cache import CacheEntry, get_cache, prompt_from_messages
 from app.config import get_settings
 from app.db import SessionLocal, get_db
 from app.judge import judge_same_intent
-from app.model_registry import get_registry
+from app.model_registry import get_registry, resolve_model
 from app.models import ApiKey, RequestLog
 from app.pricing import estimate_cost_usd
 from app.providers import ProviderError, StreamChunk, run_completion, run_streaming_completion
@@ -96,6 +96,21 @@ def _backend_error(
 CACHE_BYPASS = "bypass"
 
 
+def _validate_request(body: ChatCompletionRequest) -> None:
+    """ignore_eos only makes sense with a length cap, and only vLLM supports
+    it. Reject it anywhere else rather than quietly dropping it -- a
+    benchmark that thinks it's running fixed-length outputs but isn't would
+    produce meaningless tokens/s numbers."""
+    if not body.ignore_eos:
+        return
+    if body.max_tokens is None:
+        raise HTTPException(status_code=400, detail="ignore_eos requires max_tokens")
+    provider = resolve_model(body.model).provider
+    if provider != "vllm":
+        detail = f"ignore_eos is only supported by vLLM; model '{body.model}' is served by {provider}"
+        raise HTTPException(status_code=400, detail=detail)
+
+
 def _should_use_cache(body: ChatCompletionRequest, cache_header: str | None) -> bool:
     """Whether this request may read from / write to the semantic cache.
 
@@ -147,6 +162,7 @@ async def chat_completions(
     limiter: RateLimiter = Depends(get_rate_limiter),
     x_synapse_cache: str | None = Header(default=None),
 ):
+    _validate_request(body)
     use_cache = _should_use_cache(body, x_synapse_cache)
     _enforce_limits(api_key, limiter)
 
@@ -166,7 +182,7 @@ async def chat_completions(
             # backend that's down can still get a real error status.
             try:
                 stream, provider = await run_streaming_completion(
-                    body.model, messages, body.temperature, body.max_tokens
+                    body.model, messages, body.temperature, body.max_tokens, body.ignore_eos
                 )
             except ProviderError as exc:
                 raise _backend_error(db, limiter, api_key, body.model, start, exc) from exc
@@ -186,7 +202,7 @@ async def chat_completions(
     else:
         try:
             text, prompt_tokens, completion_tokens, provider = await run_completion(
-                body.model, messages, body.temperature, body.max_tokens
+                body.model, messages, body.temperature, body.max_tokens, body.ignore_eos
             )
         except ProviderError as exc:
             raise _backend_error(db, limiter, api_key, body.model, start, exc) from exc

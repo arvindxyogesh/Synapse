@@ -379,6 +379,12 @@ version of the same model, each on its own vLLM server, copy
 `PROVIDER`, and a malformed registry file stops the gateway at startup
 rather than routing anywhere unexpected.
 
+For benchmarking at a fixed output length, vLLM-served models accept
+`"ignore_eos": true` together with `max_tokens`: generation continues past
+the model's end-of-sequence token, so every reply is exactly `max_tokens`
+long. With the `openai` SDK, pass it as `extra_body={"ignore_eos": True}`.
+It's rejected with a 400 without `max_tokens` or for Ollama-served models.
+
 To skip the semantic cache for one request (no lookup, no store), send
 `x-synapse-cache: bypass`. With the `openai` SDK, that's
 `extra_headers={"x-synapse-cache": "bypass"}`. The response carries

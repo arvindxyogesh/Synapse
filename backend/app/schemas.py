@@ -13,6 +13,13 @@ class ChatCompletionRequest(BaseModel):
     messages: list[ChatMessage]
     temperature: float = 0.7
     max_tokens: int | None = Field(default=None, ge=1, description="Cap on generated tokens; null = backend default")
+    ignore_eos: bool = Field(
+        default=False,
+        description=(
+            "vLLM-only extension: keep generating past the end-of-sequence token, so the reply is exactly "
+            "max_tokens long. For benchmarks with a fixed output length. Requires max_tokens."
+        ),
+    )
     stream: bool = False
 
 

@@ -278,3 +278,46 @@ nothing yet.
 already has rows needs no backfill. It was tested upgrade, then downgrade,
 then upgrade on SQLite, and CI applies it to Postgres and runs `alembic
 check` there.
+
+---
+
+## D8. Fixed-length outputs for the speed benchmark (`ignore_eos`)
+
+**Date:** 2026-10-08
+
+**Context.** Tokens per second and end-to-end latency only compare fairly if
+every variant generates *the same number of tokens*. Quantization changes a
+model's outputs slightly, so given the same prompt the 4-bit variant might
+stop after 180 tokens where the 16-bit one writes 240. Its end-to-end latency
+would look better for a reason that has nothing to do with speed. `max_tokens`
+alone only sets a ceiling; the model can still stop earlier.
+
+**What `ignore_eos` does.** A model signals "I'm done" by generating a
+special end-of-sequence (EOS) token. vLLM's `ignore_eos` option tells it to
+keep going anyway until `max_tokens` is reached. Every request then produces
+exactly `max_tokens` tokens, and speed is measured on identical amounts of
+work.
+
+**Options.**
+1. Don't force a length. Report tokens/s from each variant's actual token
+   counts and accept that latency comparisons are skewed. Simple, but the
+   headline latency numbers would be misleading.
+2. Pick prompts that always produce long answers and hope they hit the cap.
+   This is unreliable, and still uncontrolled.
+3. Pass vLLM's `ignore_eos` through the gateway.
+
+**Decision.** Option 3 for the *speed* runs. `ignore_eos` isn't part of the
+OpenAI API; it's a vLLM extension, and the OpenAI SDK sends it via
+`extra_body`. The gateway accepts it as an explicit field and forwards it
+only to vLLM. It returns 400 if `max_tokens` is missing (otherwise the model
+would generate until the context window is full) or if the model is served
+by Ollama, which has no equivalent, so the benchmark can't *think* it's
+running fixed-length outputs when it isn't.
+
+**What it does NOT apply to.** The *quality* evaluation (GSM8K) runs without
+`ignore_eos`. There the model must stop naturally, because padding an answer
+with extra tokens after it should have stopped would corrupt the
+answer-extraction step. Output text after the EOS point is meaningless filler,
+which is fine for measuring speed and wrong for measuring correctness.
+
+**Cost.** One non-standard request field, documented in the README.
