@@ -271,7 +271,7 @@ this run.
 
 | Layer | Tech |
 |---|---|
-| Model serving | Pluggable via `PROVIDER`: [Ollama](https://ollama.com) (default, CPU) or [vLLM](https://github.com/vllm-project/vllm) (GPU, OpenAI-compatible), with an automatic mock-provider fallback |
+| Model serving | Pluggable via `PROVIDER`: [Ollama](https://ollama.com) (default, CPU) or [vLLM](https://github.com/vllm-project/vllm) (GPU, OpenAI-compatible), with an opt-in mock-provider fallback (`MOCK_FALLBACK`) |
 | Backend | FastAPI, SQLAlchemy, Alembic |
 | Cache | Redis, with ANN vector search (Query Engine / RediSearch) when available, falling back to a linear scan otherwise |
 | Cache correctness | Adaptive per-model similarity threshold, tuned online by LLM-judge shadow verification |
@@ -296,9 +296,11 @@ docker compose up --build
 Engine module the semantic cache uses for ANN vector search, and the
 backend image runs `alembic upgrade head` on startup before serving traffic.
 
-If the configured provider isn't running locally, the gateway automatically
-serves mock responses instead of erroring out — you can still exercise the
-whole cache/cost/dashboard pipeline with zero model setup. To use real
+If the configured provider isn't running, the compose stack serves mock
+responses instead of erroring out (`MOCK_FALLBACK=true`, the compose
+default) — you can still exercise the whole cache/cost/dashboard pipeline
+with zero model setup. Outside compose the fallback is off by default and a
+failing backend returns HTTP 502, logged as an error row. To use real
 open-weight models with the default backend: `ollama pull llama3` then
 `ollama serve`.
 
@@ -365,6 +367,12 @@ and set or clear their rate limit and quota.
 Exceeding a key's rate limit or quota returns `429` (rate limit responses
 carry a `Retry-After` header).
 
+To skip the semantic cache for one request (no lookup, no store), send
+`x-synapse-cache: bypass`. With the `openai` SDK, that's
+`extra_headers={"x-synapse-cache": "bypass"}`. The response carries
+`x-cache: bypass`. Requests that set `max_tokens` also skip the cache (see
+[DECISIONS.md](DECISIONS.md), D2).
+
 ## Tests
 
 ```bash
@@ -374,9 +382,12 @@ cd frontend && npm install && npm run lint && npm run build
 
 Both run in CI on every push (`.github/workflows/ci.yml`). Tests build
 their schema straight from the SQLAlchemy models (no Alembic involved) and
-run against fakeredis, so the ANN cache branch is covered separately with a
-mocked Redis client (`tests/test_cache_ann.py`) since fakeredis doesn't
-implement the vector search commands. `tests/test_openai_compat.py` runs
+run against fakeredis. The backend suite runs twice in CI: once on SQLite
+and once on a real Postgres 16, which also checks that the Alembic
+migrations apply and match the models. To run it on Postgres locally, set
+`TEST_DATABASE_URL=postgresql://user:pass@host:5432/db`. Fakeredis doesn't
+implement the vector search commands, so the ANN cache branch is covered
+separately with a mocked Redis client (`tests/test_cache_ann.py`). `tests/test_openai_compat.py` runs
 the real `openai` SDK against the app in-process (via httpx's ASGI
 transport) to verify drop-in compatibility, not just a schema comparison.
 
@@ -388,7 +399,7 @@ backend/
   app/
     main.py           FastAPI app + router wiring
     providers.py       Ollama + vLLM clients, pluggable via PROVIDER, with
-                        mock fallback, incl. streaming
+                        opt-in mock fallback, incl. streaming
     cache.py           semantic cache: exact match, ANN vector search
                         (Redis Query Engine) with linear-scan fallback
     embeddings.py      sentence-transformers embedder + hashing fallback

@@ -166,10 +166,11 @@ async def test_run_completion_uses_vllm_when_provider_configured(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_run_completion_falls_back_to_mock_when_vllm_unreachable(monkeypatch):
+async def test_run_completion_falls_back_to_mock_when_fallback_enabled(monkeypatch):
     settings = get_settings()
     monkeypatch.setattr(settings, "provider", "vllm")
     monkeypatch.setattr(settings, "mock_mode", False)
+    monkeypatch.setattr(settings, "mock_fallback", True)
 
     def handler(request):
         raise httpx.ConnectError("connection refused", request=request)

@@ -6,8 +6,14 @@ import pytest
 
 os.environ["MOCK_MODE"] = "true"
 os.environ["ADMIN_KEY"] = "test-admin-key"
-_db_fd, _db_path = tempfile.mkstemp(suffix=".db")
-os.environ["DATABASE_URL"] = f"sqlite:///{_db_path}"
+# TEST_DATABASE_URL lets the same suite run against a real Postgres (CI does
+# this too) -- SQLite-only SQL like strftime() passes on SQLite and breaks on
+# Postgres, which is what docker-compose actually runs.
+if os.environ.get("TEST_DATABASE_URL"):
+    os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
+else:
+    _db_fd, _db_path = tempfile.mkstemp(suffix=".db")
+    os.environ["DATABASE_URL"] = f"sqlite:///{_db_path}"
 
 import app.cache as cache_module  # noqa: E402
 import app.redis_client as redis_client_module  # noqa: E402
@@ -15,9 +21,11 @@ from app.config import get_settings  # noqa: E402
 from app.db import Base, engine  # noqa: E402
 from app.models import ApiKey, RequestLog  # noqa: E402,F401
 
-# Tests use a throwaway SQLite file created straight from the SQLAlchemy
-# models (no Alembic involved) -- production/dev use `alembic upgrade head`
-# instead, see app/main.py and alembic/.
+# Tests build the schema straight from the SQLAlchemy models (no Alembic
+# involved) -- production/dev use `alembic upgrade head` instead, see
+# app/main.py and alembic/. drop_all first so a reused Postgres database
+# starts clean.
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 

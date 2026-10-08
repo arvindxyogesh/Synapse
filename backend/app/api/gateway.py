@@ -4,7 +4,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -16,7 +16,7 @@ from app.db import SessionLocal, get_db
 from app.judge import judge_same_intent
 from app.models import ApiKey, RequestLog
 from app.pricing import estimate_cost_usd
-from app.providers import run_completion, run_streaming_completion
+from app.providers import ProviderError, StreamChunk, run_completion, run_streaming_completion
 from app.ratelimit import RateLimiter, get_rate_limiter
 from app.schemas import ChatCompletionChoice, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, Usage
 from app.threshold_controller import get_threshold_controller
@@ -47,6 +47,7 @@ def _log_and_bill(
     completion_tokens: int,
     cost_usd: float,
     latency_ms: float,
+    status: str = "ok",
 ) -> None:
     db.add(
         RequestLog(
@@ -58,7 +59,7 @@ def _log_and_bill(
             completion_tokens=completion_tokens,
             cost_usd=cost_usd,
             latency_ms=latency_ms,
-            status="ok",
+            status=status,
         )
     )
     db.commit()
@@ -79,6 +80,42 @@ async def _shadow_verify(model: str, source_prompt: str, new_prompt: str) -> Non
         pass
 
 
+def _backend_error(
+    db: Session, limiter: RateLimiter, api_key: ApiKey, model: str, start: float, exc: ProviderError
+) -> HTTPException:
+    """Log a failed backend call as an error row (so error rates show up per
+    model instead of disappearing) and build the 502 to return."""
+    latency_ms = (time.perf_counter() - start) * 1000
+    _log_and_bill(db, limiter, api_key, "error", model, False, 0, 0, 0.0, latency_ms, status="error")
+    return HTTPException(status_code=502, detail=str(exc))
+
+
+CACHE_BYPASS = "bypass"
+
+
+def _should_use_cache(body: ChatCompletionRequest, cache_header: str | None) -> bool:
+    """Whether this request may read from / write to the semantic cache.
+
+    - `x-synapse-cache: bypass` skips it explicitly (used by the benchmark
+      to measure the model rather than the cache). Any other value is
+      rejected, so a typo can't silently leave the cache on.
+    - The cache is keyed on (model, prompt) only. A reply generated under a
+      max_tokens cap may be cut short, so caching it would hand a truncated
+      answer to a later request that asked for no cap -- requests that set
+      max_tokens skip the cache too (see DECISIONS.md D2)."""
+    if cache_header is not None and cache_header.lower() != CACHE_BYPASS:
+        raise HTTPException(status_code=400, detail=f"x-synapse-cache must be '{CACHE_BYPASS}' if set")
+    if cache_header is not None:
+        return False
+    return body.max_tokens is None
+
+
+def _cache_header(use_cache: bool, cached: bool) -> str:
+    if not use_cache:
+        return "bypass"
+    return "hit" if cached else "miss"
+
+
 def _maybe_shadow_verify(model: str, hit: CacheEntry, new_prompt: str) -> None:
     if not hit.source_prompt:
         return  # entry was cached before source_prompt existed -- nothing to compare against
@@ -93,18 +130,34 @@ async def chat_completions(
     api_key: ApiKey = Depends(require_api_key),
     db: Session = Depends(get_db),
     limiter: RateLimiter = Depends(get_rate_limiter),
+    x_synapse_cache: str | None = Header(default=None),
 ):
+    use_cache = _should_use_cache(body, x_synapse_cache)
     _enforce_limits(api_key, limiter)
 
     start = time.perf_counter()
     messages = [m.model_dump() for m in body.messages]
     prompt = prompt_from_messages(messages)
     cache = get_cache()
-    threshold = get_threshold_controller().get_threshold(body.model)
-    hit = cache.lookup(body.model, messages, threshold=threshold)
+    hit = None
+    if use_cache:
+        threshold = get_threshold_controller().get_threshold(body.model)
+        hit = cache.lookup(body.model, messages, threshold=threshold)
 
     if body.stream:
-        return _stream_chat_completion(body, messages, prompt, hit, api_key, limiter, start)
+        stream = provider = None
+        if hit is None:
+            # Start the backend stream *before* sending any response, so a
+            # backend that's down can still get a real error status.
+            try:
+                stream, provider = await run_streaming_completion(
+                    body.model, messages, body.temperature, body.max_tokens
+                )
+            except ProviderError as exc:
+                raise _backend_error(db, limiter, api_key, body.model, start, exc) from exc
+        return _stream_chat_completion(
+            body, messages, prompt, use_cache, hit, stream, provider, api_key, limiter, start
+        )
 
     if hit:
         text, prompt_tokens, completion_tokens, provider, cached = (
@@ -116,11 +169,15 @@ async def chat_completions(
         )
         _maybe_shadow_verify(body.model, hit, prompt)
     else:
-        text, prompt_tokens, completion_tokens, provider = await run_completion(
-            body.model, messages, body.temperature
-        )
+        try:
+            text, prompt_tokens, completion_tokens, provider = await run_completion(
+                body.model, messages, body.temperature, body.max_tokens
+            )
+        except ProviderError as exc:
+            raise _backend_error(db, limiter, api_key, body.model, start, exc) from exc
         cached = False
-        cache.store(body.model, messages, CacheEntry(text, prompt_tokens, completion_tokens))
+        if use_cache:
+            cache.store(body.model, messages, CacheEntry(text, prompt_tokens, completion_tokens))
 
     latency_ms = (time.perf_counter() - start) * 1000
     cost_usd = 0.0 if cached else estimate_cost_usd(body.model, prompt_tokens, completion_tokens)
@@ -129,7 +186,7 @@ async def chat_completions(
         db, limiter, api_key, provider, body.model, cached, prompt_tokens, completion_tokens, cost_usd, latency_ms
     )
 
-    response.headers["x-cache"] = "hit" if cached else "miss"
+    response.headers["x-cache"] = _cache_header(use_cache, cached)
     response.headers["x-provider"] = provider
 
     return ChatCompletionResponse(
@@ -157,7 +214,10 @@ def _stream_chat_completion(
     body: ChatCompletionRequest,
     messages: list[dict],
     prompt: str,
+    use_cache: bool,
     hit: CacheEntry | None,
+    stream: AsyncIterator[StreamChunk] | None,
+    provider: str | None,
     api_key: ApiKey,
     limiter: RateLimiter,
     start: float,
@@ -202,7 +262,6 @@ def _stream_chat_completion(
                 )
                 return
 
-            stream, provider = await run_streaming_completion(body.model, messages, body.temperature)
             full_text = ""
             prompt_tokens = completion_tokens = 0
             async for piece in stream:
@@ -217,7 +276,8 @@ def _stream_chat_completion(
                     yield _chunk_event(piece.text, provider, False)
             yield "data: [DONE]\n\n"
 
-            cache.store(body.model, messages, CacheEntry(full_text, prompt_tokens, completion_tokens))
+            if use_cache:
+                cache.store(body.model, messages, CacheEntry(full_text, prompt_tokens, completion_tokens))
             latency_ms = (time.perf_counter() - start) * 1000
             cost_usd = estimate_cost_usd(body.model, prompt_tokens, completion_tokens)
             _log_and_bill(
@@ -231,8 +291,8 @@ def _stream_chat_completion(
         _generate(),
         media_type="text/event-stream",
         headers={
-            "x-cache": "hit" if hit is not None else "miss",
-            "x-provider": "cache" if hit is not None else "pending",
+            "x-cache": _cache_header(use_cache, hit is not None),
+            "x-provider": "cache" if hit is not None else provider,
             "Cache-Control": "no-cache",
         },
     )
