@@ -49,6 +49,7 @@ def _log_and_bill(
     cost_usd: float,
     latency_ms: float,
     status: str = "ok",
+    ttft_ms: float | None = None,
 ) -> None:
     db.add(
         RequestLog(
@@ -60,6 +61,7 @@ def _log_and_bill(
             completion_tokens=completion_tokens,
             cost_usd=cost_usd,
             latency_ms=latency_ms,
+            ttft_ms=ttft_ms,
             status=status,
         )
     )
@@ -237,6 +239,11 @@ def _stream_chat_completion(
 ) -> StreamingResponse:
     completion_id = str(uuid.uuid4())
     cache = get_cache()
+    # Time to first token, as the gateway sees it: from `start` (after auth
+    # and rate limiting) to the first chunk with actual text being handed to
+    # the response stream. Clients measure their own TTFT too, which adds
+    # network time; this one is what gets logged per model.
+    ttft_ms: float | None = None
 
     def _chunk_event(delta: str, provider: str, cached: bool, finish_reason: str | None = None) -> str:
         # provider/cached are echoed on every chunk (not just in response
@@ -254,6 +261,12 @@ def _stream_chat_completion(
             }
         )
 
+    def _content_event(delta: str, provider: str, cached: bool) -> str:
+        nonlocal ttft_ms
+        if ttft_ms is None and delta:
+            ttft_ms = (time.perf_counter() - start) * 1000
+        return _chunk_event(delta, provider, cached)
+
     async def _generate() -> AsyncIterator[str]:
         # A fresh DB session, because this generator outlives the request's
         # own `db` dependency once headers have already been sent.
@@ -263,7 +276,7 @@ def _stream_chat_completion(
                 words = hit.response_text.split(" ")
                 for i, word in enumerate(words):
                     piece = word if i == len(words) - 1 else word + " "
-                    yield _chunk_event(piece, "cache", True)
+                    yield _content_event(piece, "cache", True)
                 yield _chunk_event("", "cache", True, finish_reason="stop")
                 yield "data: [DONE]\n\n"
 
@@ -271,7 +284,7 @@ def _stream_chat_completion(
                 latency_ms = (time.perf_counter() - start) * 1000
                 _log_and_bill(
                     db, limiter, api_key, "cache", body.model, True,
-                    hit.prompt_tokens, hit.completion_tokens, 0.0, latency_ms,
+                    hit.prompt_tokens, hit.completion_tokens, 0.0, latency_ms, ttft_ms=ttft_ms,
                 )
                 return
 
@@ -283,10 +296,10 @@ def _stream_chat_completion(
                     prompt_tokens = piece.prompt_tokens or 0
                     completion_tokens = piece.completion_tokens or 0
                     if piece.text:
-                        yield _chunk_event(piece.text, provider, False)
+                        yield _content_event(piece.text, provider, False)
                     yield _chunk_event("", provider, False, finish_reason="stop")
                 else:
-                    yield _chunk_event(piece.text, provider, False)
+                    yield _content_event(piece.text, provider, False)
             yield "data: [DONE]\n\n"
 
             if use_cache:
@@ -295,7 +308,7 @@ def _stream_chat_completion(
             cost_usd = estimate_cost_usd(body.model, prompt_tokens, completion_tokens)
             _log_and_bill(
                 db, limiter, api_key, provider, body.model, False,
-                prompt_tokens, completion_tokens, cost_usd, latency_ms,
+                prompt_tokens, completion_tokens, cost_usd, latency_ms, ttft_ms=ttft_ms,
             )
         finally:
             db.close()

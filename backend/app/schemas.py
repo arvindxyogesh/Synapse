@@ -121,5 +121,6 @@ class RequestLogOut(BaseModel):
     completion_tokens: int
     cost_usd: float
     latency_ms: float
+    ttft_ms: float | None = None
     status: str
     created_at: str

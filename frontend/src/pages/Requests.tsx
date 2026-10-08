@@ -30,6 +30,7 @@ export default function Requests() {
             <th className="px-4 py-2 font-medium">Tokens</th>
             <th className="px-4 py-2 font-medium">Cost</th>
             <th className="px-4 py-2 font-medium">Latency</th>
+            <th className="px-4 py-2 font-medium" title="Time to first token (streamed requests only)">TTFT</th>
             <th className="px-4 py-2 font-medium">Status</th>
           </tr>
         </thead>
@@ -45,12 +46,13 @@ export default function Requests() {
               <td className="px-4 py-2">{row.prompt_tokens + row.completion_tokens}</td>
               <td className="px-4 py-2">${row.cost_usd.toFixed(5)}</td>
               <td className="px-4 py-2">{row.latency_ms.toFixed(0)}ms</td>
+              <td className="px-4 py-2">{row.ttft_ms === null ? "–" : `${row.ttft_ms.toFixed(0)}ms`}</td>
               <td className="px-4 py-2">{row.status}</td>
             </tr>
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
+              <td colSpan={9} className="px-4 py-6 text-center text-slate-500">
                 No requests yet. Send one to /v1/chat/completions to see it here.
               </td>
             </tr>

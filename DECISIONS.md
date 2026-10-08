@@ -239,3 +239,42 @@ models often (that's where option 2 would win).
 
 **Also added.** `GET /v1/models`, the OpenAI-compatible list (what
 `client.models.list()` calls), tested with the real `openai` SDK.
+
+---
+
+## D7. Logging time to first token (TTFT): what exactly is measured
+
+**Date:** 2026-10-08
+
+**Context.** For a chat product, two latencies matter and they can move in
+opposite directions. **TTFT** is how long the user stares at a blank screen.
+**End-to-end latency** is how long until the whole answer is there.
+Quantization can change them differently: TTFT is dominated by *prefill*
+(processing the prompt, which is compute-heavy), while the rest is *decode*
+(one token at a time, which is limited by memory bandwidth). The gateway only
+logged end-to-end latency, so it now logs TTFT too (`request_logs.ttft_ms`,
+Alembic migration `d0caa44f82d4`).
+
+**What the number means.** From the moment the handler starts (after auth
+and rate limiting) to the moment the first chunk *with actual text* is handed
+to the response stream. Chunks with no text (some backends send an empty
+first chunk carrying only the role) don't count, because the user sees
+nothing yet.
+
+**Choices made along the way.**
+- **Streaming only.** A non-streamed reply arrives all at once, so it has no
+  separate "first token". Those rows store `NULL`, not 0 and not a copy of
+  the total latency, so averages over TTFT can't be quietly dragged by
+  requests that never had one.
+- **Gateway-side vs. client-side.** This is the gateway's view. A client
+  also pays network time, so its TTFT is a bit higher. The benchmark records
+  its own client-side TTFT as the headline number, and the logged one is
+  what the gateway can report per model on its own. Comparing the two is a
+  check on the gateway's overhead.
+- **Cache hits get a TTFT too.** It's what a user actually experiences on a
+  hit, and it shows how much faster a hit starts than a miss.
+
+**Migration safety.** The column is nullable, so adding it to a table that
+already has rows needs no backfill. It was tested upgrade, then downgrade,
+then upgrade on SQLite, and CI applies it to Postgres and runs `alembic
+check` there.
