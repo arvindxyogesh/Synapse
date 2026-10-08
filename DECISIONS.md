@@ -194,3 +194,48 @@ able to raise the timeout rather than record those requests as errors.
 generator itself* can be the bottleneck. The milestone 3 harness will record
 its own CPU usage, and will run on a machine with enough cores to keep up, so
 a slow client isn't reported as a slow server.
+
+---
+
+## D6. A model registry file, with the old single-backend behavior as the fallback
+
+**Date:** 2026-10-08
+
+**Context.** The benchmark needs the 16-bit, 4-bit AWQ and 8-bit GPTQ
+versions of Qwen2.5-7B-Instruct behind one gateway, each as its own model
+name, so requests can be routed to any of them and metrics are recorded per
+variant. Before this change there was one global backend (`PROVIDER` plus one
+URL), and the `model` string was just passed through to it.
+
+**Why each variant needs its own server.** A vLLM server loads one set of
+weights at startup, so a 16-bit and a 4-bit checkpoint are two separate
+`vllm serve` processes on two ports. The gateway has to know which port
+serves which name. (For the benchmark they run one at a time on the same
+GPU, as explained in docs/PLAN.md. The registry still lists all three, so
+whichever one is up can be reached by name.)
+
+**Options.**
+1. Environment variables per model (`MODEL_QWEN_AWQ_URL=...`). That gets
+   unreadable past two models, and model names don't map cleanly onto
+   environment variable names.
+2. A database table, editable through the admin API. It's dynamic, but it
+   needs a migration, endpoints and UI, and it's far more than "which port
+   serves which model" requires.
+3. A small TOML file (`MODEL_REGISTRY_PATH`), parsed with Python's built-in
+   `tomllib`, so no new dependency.
+
+**Decision.** Option 3. Each entry is just `provider`, `base_url` and an
+optional `upstream_model` (the name the backend itself uses, e.g.
+`Qwen/Qwen2.5-7B-Instruct-AWQ`, so clients can use a short name).
+Unregistered names keep the old behavior, so nothing that worked before
+breaks. The file is checked strictly at startup: an unknown provider, a URL
+that isn't http(s), or a misspelled setting (`base_ur`) stops the gateway
+with a clear error. A silently ignored typo would send traffic to the wrong
+backend and mislabel the results.
+
+**Cost.** Changing the registry needs a gateway restart. That's fine for a
+benchmark and a demo; it wouldn't be for a production system that adds
+models often (that's where option 2 would win).
+
+**Also added.** `GET /v1/models`, the OpenAI-compatible list (what
+`client.models.list()` calls), tested with the real `openai` SDK.

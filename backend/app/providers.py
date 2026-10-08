@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import httpx
 
 from app.config import get_settings
+from app.model_registry import ModelRoute, resolve_model
 
 logger = logging.getLogger(__name__)
 
@@ -221,33 +222,35 @@ class MockProvider(BaseProvider):
         yield StreamChunk(text="", done=True, prompt_tokens=prompt_tokens, completion_tokens=_estimate_tokens(text))
 
 
-def _real_provider(settings) -> BaseProvider:
-    """The non-mock backend selected by PROVIDER (default "ollama")."""
-    if settings.provider == "vllm":
-        return VLLMProvider(settings.vllm_base_url, settings.vllm_api_key)
-    return OllamaProvider(settings.ollama_base_url)
+def provider_for(route: ModelRoute) -> BaseProvider:
+    """The real (non-mock) backend client for a resolved model route."""
+    if route.provider == "vllm":
+        return VLLMProvider(route.base_url, get_settings().vllm_api_key)
+    return OllamaProvider(route.base_url)
 
 
-def _backend_failed(provider: BaseProvider, exc: Exception) -> ProviderError:
-    return ProviderError(f"{provider.name} backend failed: {exc!r}")
+def _backend_failed(provider: BaseProvider, model: str, exc: Exception) -> ProviderError:
+    return ProviderError(f"{provider.name} backend failed for model '{model}': {exc!r}")
 
 
 async def run_completion(
     model: str, messages: list[dict], temperature: float, max_tokens: int | None = None
 ) -> tuple[str, int, int, str]:
-    """Route to the configured provider (see PROVIDER). Returns (text,
+    """Route to the backend for `model` (its registry entry, else PROVIDER --
+    see app/model_registry.py). Returns (text,
     prompt_tokens, completion_tokens, provider_name). Raises ProviderError
     if the backend fails, unless MOCK_FALLBACK is set, in which case the
     mock provider answers instead (and a warning is logged)."""
     settings = get_settings()
     if not settings.mock_mode:
-        provider = _real_provider(settings)
+        route = resolve_model(model, settings)
+        provider = provider_for(route)
         try:
-            text, pt, ct = await provider.complete(model, messages, temperature, max_tokens)
+            text, pt, ct = await provider.complete(route.upstream_model, messages, temperature, max_tokens)
             return text, pt, ct, provider.name
         except (httpx.HTTPError, ProviderError) as exc:
             if not settings.mock_fallback:
-                raise _backend_failed(provider, exc) from exc
+                raise _backend_failed(provider, model, exc) from exc
             logger.warning("%s backend failed (%r); serving a mock response (MOCK_FALLBACK=true)", provider.name, exc)
 
     provider = MockProvider()
@@ -265,17 +268,18 @@ async def run_streaming_completion(
     the first chunk ends the stream early (no [DONE] marker)."""
     settings = get_settings()
     if not settings.mock_mode:
-        provider = _real_provider(settings)
-        agen = provider.stream(model, messages, temperature, max_tokens)
+        route = resolve_model(model, settings)
+        provider = provider_for(route)
+        agen = provider.stream(route.upstream_model, messages, temperature, max_tokens)
         try:
             first_chunk = await agen.__anext__()
         except StopAsyncIteration as exc:
             if not settings.mock_fallback:
-                raise ProviderError(f"{provider.name} backend returned an empty stream") from exc
+                raise ProviderError(f"{provider.name} backend returned an empty stream for model '{model}'") from exc
             logger.warning("%s backend returned an empty stream; serving a mock response", provider.name)
         except (httpx.HTTPError, ProviderError) as exc:
             if not settings.mock_fallback:
-                raise _backend_failed(provider, exc) from exc
+                raise _backend_failed(provider, model, exc) from exc
             logger.warning("%s backend failed (%r); serving a mock response (MOCK_FALLBACK=true)", provider.name, exc)
         else:
             async def _prefixed() -> AsyncIterator[StreamChunk]:

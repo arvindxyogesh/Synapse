@@ -14,6 +14,7 @@ from app.cache import CacheEntry, get_cache, prompt_from_messages
 from app.config import get_settings
 from app.db import SessionLocal, get_db
 from app.judge import judge_same_intent
+from app.model_registry import get_registry
 from app.models import ApiKey, RequestLog
 from app.pricing import estimate_cost_usd
 from app.providers import ProviderError, StreamChunk, run_completion, run_streaming_completion
@@ -121,6 +122,18 @@ def _maybe_shadow_verify(model: str, hit: CacheEntry, new_prompt: str) -> None:
         return  # entry was cached before source_prompt existed -- nothing to compare against
     if random.random() < get_settings().shadow_verify_sample_rate:
         fire_and_forget(_shadow_verify(model, hit.source_prompt, new_prompt))
+
+
+@router.get("/models")
+def list_models(api_key: ApiKey = Depends(require_api_key)):
+    """OpenAI-compatible model list (what `client.models.list()` calls).
+    Lists the registry's models; without a registry, just DEFAULT_MODEL --
+    any other name still works, it just isn't advertised."""
+    names = sorted(get_registry()) or [get_settings().default_model]
+    return {
+        "object": "list",
+        "data": [{"id": name, "object": "model", "created": 0, "owned_by": "synapse"} for name in names],
+    }
 
 
 @router.post("/chat/completions", response_model=ChatCompletionResponse)

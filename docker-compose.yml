@@ -42,6 +42,9 @@ services:
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://vllm:8000}
       VLLM_API_KEY: ${VLLM_API_KEY:-}
       DEFAULT_MODEL: ${DEFAULT_MODEL:-llama3}
+      # Path *inside the container* -- mount your models.toml there first
+      # (see models.example.toml). Empty = no registry.
+      MODEL_REGISTRY_PATH: ${MODEL_REGISTRY_PATH:-}
       BACKEND_TIMEOUT_SECONDS: ${BACKEND_TIMEOUT_SECONDS:-60}
       ADMIN_KEY: ${ADMIN_KEY:-change-me-admin-key}
       MOCK_MODE: ${MOCK_MODE:-false}

@@ -367,6 +367,18 @@ and set or clear their rate limit and quota.
 Exceeding a key's rate limit or quota returns `429` (rate limit responses
 carry a `Retry-After` header).
 
+### Serving several models (or model variants) at once
+
+By default every request goes to the one backend `PROVIDER` selects. To give
+individual model names their own backend, for example a 16-bit and a 4-bit
+version of the same model, each on its own vLLM server, copy
+`models.example.toml` to `models.toml`, edit it, and set
+`MODEL_REGISTRY_PATH=models.toml`. Clients pick a variant by name
+(`"model": "qwen2.5-7b-awq"`), the request log records that name, and
+`GET /v1/models` lists the registered names. Unlisted names still go to
+`PROVIDER`, and a malformed registry file stops the gateway at startup
+rather than routing anywhere unexpected.
+
 To skip the semantic cache for one request (no lookup, no store), send
 `x-synapse-cache: bypass`. With the `openai` SDK, that's
 `extra_headers={"x-synapse-cache": "bypass"}`. The response carries
@@ -406,6 +418,7 @@ backend/
     threshold_controller.py  adaptive per-model cache similarity threshold
     judge.py            LLM-judge (+ heuristic fallback) shadow verification
     background.py       fire-and-forget helper for shadow verification
+    model_registry.py  optional per-model backends (MODEL_REGISTRY_PATH)
     pricing.py         cost estimation per model
     auth.py            API key issuance/verification
     ratelimit.py        per-key rate limiting (req/min) + monthly $ quotas
