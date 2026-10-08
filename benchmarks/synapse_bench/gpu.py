@@ -47,11 +47,11 @@ _LOG_PATTERNS: list[tuple[str, re.Pattern, Callable[[re.Match], object]]] = [
     # "Maximum concurrency for 4,096 tokens per request: 117.19x"
     ("max_concurrency", re.compile(r"Maximum concurrency for ([\d,]+) tokens per request: ([\d.]+)x"),
      lambda m: {"tokens_per_request": int(_num(m.group(1))), "requests": _num(m.group(2))}),
-    # Which quantized-matmul kernel was chosen. vLLM 0.31.0 on an H200:
-    # "Using MacheteLinearKernel for AutoAWQMarlinLinearMethod" (older:
-    # "... Using awq_marlin kernel."). The first matching line is the kernel
-    # choice; it can appear once per layer type, so first match is used.
-    ("quant_kernel", re.compile(r"Using (\w+Kernel) for (\w+)"), lambda m: f"{m.group(1)} for {m.group(2)}"),
+    # Which quantized-matmul kernel was chosen. vLLM 0.31.0 on an H200 logs
+    # two such lines: "Using MacheteLinearKernel for mixed-precision linear"
+    # and "Using MacheteLinearKernel for AutoAWQMarlinLinearMethod" (older:
+    # "... Using awq_marlin kernel."). All distinct ones are kept (see below).
+    ("quant_kernel", re.compile(r"Using (\w+Kernel) for ([^\n]+)"), lambda m: f"{m.group(1)} for {m.group(2).strip()}"),
     ("quant_kernel_legacy", re.compile(r"[^\n]*Using (?:awq_marlin|gptq_marlin|marlin) kernel[^\n]*", re.IGNORECASE),
      lambda m: m.group(0).strip()),
     # vLLM 0.31.0: "Initializing a V1 LLM engine (v0.31.0) with config: ..."
@@ -61,8 +61,10 @@ _LOG_PATTERNS: list[tuple[str, re.Pattern, Callable[[re.Match], object]]] = [
 ]
 
 
-# For these, the first occurrence is the meaningful one (later ones repeat it).
-_FIRST_MATCH = {"quant_kernel", "quant_kernel_legacy", "vllm_version"}
+# The first occurrence is the meaningful one (later ones repeat it).
+_FIRST_MATCH = {"quant_kernel_legacy", "vllm_version"}
+# Every distinct occurrence matters (one line per layer type), in log order.
+_ALL_DISTINCT = {"quant_kernel"}
 
 
 def parse_vllm_log(text: str) -> dict:
@@ -70,7 +72,11 @@ def parse_vllm_log(text: str) -> dict:
     result: dict = {name: None for name, _, _ in _LOG_PATTERNS}
     for name, pattern, convert in _LOG_PATTERNS:
         matches = list(pattern.finditer(text))
-        if matches:
+        if not matches:
+            continue
+        if name in _ALL_DISTINCT:
+            result[name] = list(dict.fromkeys(convert(m) for m in matches))
+        else:
             result[name] = convert(matches[0] if name in _FIRST_MATCH else matches[-1])
     return result
 

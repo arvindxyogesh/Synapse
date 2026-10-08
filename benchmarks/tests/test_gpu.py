@@ -20,6 +20,7 @@ INFO 10-20 14:02:55 [kv_cache_utils.py:719] Maximum concurrency for 4,096 tokens
 # "(EngineCore pid=...)" process prefixes were stripped.
 REAL_LOG_0_31 = """\
 INFO 10-08 16:50:22 [core.py:129] Initializing a V1 LLM engine (v0.31.0) with config: model='Qwen/Qwen2.5-7B-Instruct-AWQ', speculative_config=None
+INFO 10-08 16:50:23 [__init__.py:870] Using MacheteLinearKernel for mixed-precision linear
 INFO 10-08 16:50:23 [auto_awq.py:451] Using MacheteLinearKernel for AutoAWQMarlinLinearMethod
 INFO 10-08 16:50:25 [default_loader.py:484] Loading weights took 0.77 seconds
 INFO 10-08 16:50:26 [model_runner.py:407] Model loading took 5.38 GiB memory and 2.637574 seconds
@@ -35,7 +36,10 @@ def test_parse_real_vllm_0_31_log():
     assert parsed["kv_cache_memory_gib"] == 34.79
     assert parsed["kv_cache_tokens"] == 651504
     assert parsed["max_concurrency"] == {"tokens_per_request": 4096, "requests": 159.06}
-    assert parsed["quant_kernel"] == "MacheteLinearKernel for AutoAWQMarlinLinearMethod"
+    assert parsed["quant_kernel"] == [
+        "MacheteLinearKernel for mixed-precision linear",
+        "MacheteLinearKernel for AutoAWQMarlinLinearMethod",
+    ]
 
 
 def test_parse_vllm_log_newer_format():
