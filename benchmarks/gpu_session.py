@@ -149,6 +149,25 @@ def _vllm_env(cfg: SessionConfig) -> dict:
     return env
 
 
+def gpu_snapshot(cuda_device: str | None) -> dict | None:
+    """Memory already in use on our GPU (by anyone) and which processes hold
+    it -- taken right before vLLM starts. nvidia-smi reports memory per GPU,
+    not per process tree, so on a shared GPU the peak during a run includes
+    other users' memory; this baseline is what gets subtracted (and reported)."""
+    if cuda_device is None:
+        return None
+    used = subprocess.run(["nvidia-smi", "-i", cuda_device, "--query-gpu=memory.used,utilization.gpu",
+                           "--format=csv,noheader,nounits"], capture_output=True, text=True)
+    apps = subprocess.run(["nvidia-smi", "-i", cuda_device, "--query-compute-apps=pid,used_memory",
+                           "--format=csv,noheader,nounits"], capture_output=True, text=True)
+    if used.returncode != 0:
+        return {"error": used.stderr.strip()}
+    mem_mib, util = (int(x.strip()) for x in used.stdout.strip().split(","))
+    others = [{"pid": int(pid), "used_mib": int(mib)}
+              for pid, mib in (line.split(",") for line in apps.stdout.strip().splitlines() if line.strip())]
+    return {"memory_used_mib": mem_mib, "utilization_pct": util, "other_processes": others}
+
+
 def preflight(cfg: SessionConfig) -> dict:
     """Confirm the vLLM version and that every flag exists before any model is
     downloaded or loaded. Needs the GPU machine: vLLM 0.31.0 can't build its
@@ -169,7 +188,8 @@ def serve_and_measure(cfg: SessionConfig, name: str, out: Path) -> dict:
     profile = RUN_PROFILES[cfg.mode]
     vllm_port, gw_port, redis_port = cfg.ports
     out.mkdir(parents=True, exist_ok=False)
-    status = {"variant": name, "started_utc": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    status = {"variant": name, "started_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+              "gpu_before_vllm": gpu_snapshot(cfg.cuda_device)}
 
     vllm_log = open(out / "vllm.log", "w")
     vllm = subprocess.Popen(

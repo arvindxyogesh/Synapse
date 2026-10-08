@@ -47,11 +47,22 @@ _LOG_PATTERNS: list[tuple[str, re.Pattern, Callable[[re.Match], object]]] = [
     # "Maximum concurrency for 4,096 tokens per request: 117.19x"
     ("max_concurrency", re.compile(r"Maximum concurrency for ([\d,]+) tokens per request: ([\d.]+)x"),
      lambda m: {"tokens_per_request": int(_num(m.group(1))), "requests": _num(m.group(2))}),
-    # Which quantized-matmul kernel was chosen, e.g. "... Using awq_marlin kernel."
-    ("quant_kernel_line", re.compile(r"[^\n]*\b(?:awq_marlin|gptq_marlin|marlin)\b[^\n]*kernel[^\n]*", re.IGNORECASE),
+    # Which quantized-matmul kernel was chosen. vLLM 0.31.0 on an H200:
+    # "Using MacheteLinearKernel for AutoAWQMarlinLinearMethod" (older:
+    # "... Using awq_marlin kernel."). The first matching line is the kernel
+    # choice; it can appear once per layer type, so first match is used.
+    ("quant_kernel", re.compile(r"Using (\w+Kernel) for (\w+)"), lambda m: f"{m.group(1)} for {m.group(2)}"),
+    ("quant_kernel_legacy", re.compile(r"[^\n]*Using (?:awq_marlin|gptq_marlin|marlin) kernel[^\n]*", re.IGNORECASE),
      lambda m: m.group(0).strip()),
-    ("vllm_version", re.compile(r"vLLM API server version ([\w.+-]+)"), lambda m: m.group(1)),
+    # vLLM 0.31.0: "Initializing a V1 LLM engine (v0.31.0) with config: ..."
+    # (older: "vLLM API server version 0.9.2").
+    ("vllm_version", re.compile(r"(?:LLM engine \(v|vLLM API server version )([\w.+-]+?)\)?(?:\s|$)"),
+     lambda m: m.group(1)),
 ]
+
+
+# For these, the first occurrence is the meaningful one (later ones repeat it).
+_FIRST_MATCH = {"quant_kernel", "quant_kernel_legacy", "vllm_version"}
 
 
 def parse_vllm_log(text: str) -> dict:
@@ -60,7 +71,7 @@ def parse_vllm_log(text: str) -> dict:
     for name, pattern, convert in _LOG_PATTERNS:
         matches = list(pattern.finditer(text))
         if matches:
-            result[name] = convert(matches[-1])
+            result[name] = convert(matches[0] if name in _FIRST_MATCH else matches[-1])
     return result
 
 
