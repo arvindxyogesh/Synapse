@@ -82,3 +82,11 @@ def test_sampler_without_nvidia_smi_does_nothing(monkeypatch):
     with GpuMemorySampler() as sampler:
         pass
     assert sampler.available is False and sampler.result() is None
+
+
+def test_sampler_records_only_selected_gpus():
+    # A shared 3-GPU machine; we only use GPU 2.
+    with GpuMemorySampler(interval_s=0.01, query=lambda: "0, 90000\n1, 120000\n2, 30000\n",
+                          gpu_indices={2}) as sampler:
+        assert _wait_until(lambda: sampler.samples >= 1)
+    assert sampler.result()["peak_mib"] == {2: 30000}

@@ -90,6 +90,9 @@ class GpuMemorySampler:
 
     interval_s: float = 0.2
     query: Callable[[], str] = _query_nvidia_smi
+    # Only record these GPU indices (nvidia-smi numbering). On a shared
+    # machine, other users' GPUs must not end up in our "peak memory".
+    gpu_indices: set[int] | None = None
     available: bool = field(init=False, default=False)
     peak_mib: dict[int, int] = field(init=False, default_factory=dict)
     samples: int = field(init=False, default=0)
@@ -101,6 +104,8 @@ class GpuMemorySampler:
 
     def _sample_once(self) -> None:
         for index, mib in parse_memory_used(self.query()).items():
+            if self.gpu_indices is not None and index not in self.gpu_indices:
+                continue
             self.peak_mib[index] = max(self.peak_mib.get(index, 0), mib)
         self.samples += 1
 

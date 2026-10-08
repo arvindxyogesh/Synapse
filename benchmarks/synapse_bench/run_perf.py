@@ -55,6 +55,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--timeout", type=float, default=300.0, help="per-request timeout, seconds")
     p.add_argument("--prompts", type=Path, default=WORKLOAD_DIR / "perf_prompts.jsonl")
     p.add_argument("--gpu-sample", action="store_true", help="record peak nvidia-smi memory per level")
+    p.add_argument("--gpu-index", type=int, action="append",
+                   help="only record this GPU's memory (nvidia-smi index; repeatable). Default: all GPUs")
     p.add_argument("--vllm-log", type=Path, help="vLLM server log to parse for weight / KV-cache memory")
     p.add_argument("--out", type=Path, required=True, help="results directory (must not exist yet)")
     args = p.parse_args(argv)
@@ -123,7 +125,8 @@ async def run(args: argparse.Namespace, api_key: str) -> int:
         for target_name, target in build_targets(args, api_key).items():
             for repeat in range(args.repeat):
                 for concurrency in args.levels:
-                    sampler = GpuMemorySampler() if args.gpu_sample else None
+                    indices = set(args.gpu_index) if args.gpu_index else None
+                    sampler = GpuMemorySampler(gpu_indices=indices) if args.gpu_sample else None
                     with sampler or contextlib.nullcontext():
                         level = await run_level(target, prompts, concurrency, args.requests, args.max_tokens,
                                                 warmup_requests=args.warmup, timeout_s=args.timeout)
