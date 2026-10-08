@@ -12,7 +12,7 @@ class ChatCompletionRequest(BaseModel):
     model: str = Field(default="llama3", description="Open-weight model name, e.g. llama3, mistral")
     messages: list[ChatMessage]
     temperature: float = 0.7
-    max_tokens: int | None = None
+    max_tokens: int | None = Field(default=None, ge=1, description="Cap on generated tokens; null = backend default")
     stream: bool = False
 
 

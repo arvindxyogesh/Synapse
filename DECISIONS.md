@@ -48,3 +48,42 @@ README says so.
 - **Shadow verification.** The LLM-judge already caught exceptions and fell
   back to its word-overlap heuristic, so cache shadow verification behaves
   the same as before when the backend is down.
+
+---
+
+## D2. Forward `max_tokens`, and skip the cache for requests that set it
+
+**Date:** 2026-10-08
+
+**Context.** The API accepted `max_tokens` but never passed it to Ollama or
+vLLM, so every reply ran until the model decided to stop. For a benchmark
+that's fatal: if one model variant writes longer answers, its tokens/s and
+latency aren't comparable with another's. It's now forwarded (`max_tokens`
+for vLLM, `options.num_predict` for Ollama, which uses a different name).
+
+**The new problem this creates.** The semantic cache is keyed on
+*(model, prompt)* only. Once `max_tokens` actually works, a reply cut off at
+5 tokens could be cached and then served to a later request for the same
+prompt that asked for no limit. That's a wrong answer, not just a slow one.
+
+**Options.**
+1. Add `max_tokens` to the cache key. That splits the cache into many small
+   pieces (one per cap value), and a request capped at 300 still couldn't
+   reuse a perfectly good 120-token answer stored under cap 256.
+2. Store a reply only if the backend says it finished naturally
+   (`finish_reason == "stop"`, not `"length"`). This is the most precise
+   option, but it needs `finish_reason` plumbed through both providers and
+   the streaming path.
+3. Requests that set `max_tokens` skip the cache: no lookup, no store.
+
+**Decision.** Option 3 for now, because it's simple and obviously correct.
+The response says so: `x-cache: bypass`.
+
+**Cost.** Clients that always send `max_tokens` (many SDK users do) get no
+caching at all. Option 2 is the better long-term fix and is a known
+follow-up.
+
+**Related, pre-existing limitation (not fixed here).** `temperature` isn't in
+the cache key either, so a `temperature=0` request can be served a reply that
+was sampled at `temperature=0.7`. It's noted here so it isn't forgotten. The
+benchmark bypasses the cache for its performance runs, so it isn't affected.

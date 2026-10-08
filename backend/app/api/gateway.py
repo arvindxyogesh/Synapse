@@ -90,6 +90,20 @@ def _backend_error(
     return HTTPException(status_code=502, detail=str(exc))
 
 
+def _should_use_cache(body: ChatCompletionRequest) -> bool:
+    """The cache is keyed on (model, prompt) only. A reply generated under a
+    max_tokens cap may be cut short, so caching it would hand a truncated
+    answer to a later request that asked for no cap -- requests that set
+    max_tokens skip the cache entirely (lookup and store)."""
+    return body.max_tokens is None
+
+
+def _cache_header(use_cache: bool, cached: bool) -> str:
+    if not use_cache:
+        return "bypass"
+    return "hit" if cached else "miss"
+
+
 def _maybe_shadow_verify(model: str, hit: CacheEntry, new_prompt: str) -> None:
     if not hit.source_prompt:
         return  # entry was cached before source_prompt existed -- nothing to compare against
@@ -111,8 +125,11 @@ async def chat_completions(
     messages = [m.model_dump() for m in body.messages]
     prompt = prompt_from_messages(messages)
     cache = get_cache()
-    threshold = get_threshold_controller().get_threshold(body.model)
-    hit = cache.lookup(body.model, messages, threshold=threshold)
+    use_cache = _should_use_cache(body)
+    hit = None
+    if use_cache:
+        threshold = get_threshold_controller().get_threshold(body.model)
+        hit = cache.lookup(body.model, messages, threshold=threshold)
 
     if body.stream:
         stream = provider = None
@@ -120,10 +137,14 @@ async def chat_completions(
             # Start the backend stream *before* sending any response, so a
             # backend that's down can still get a real error status.
             try:
-                stream, provider = await run_streaming_completion(body.model, messages, body.temperature)
+                stream, provider = await run_streaming_completion(
+                    body.model, messages, body.temperature, body.max_tokens
+                )
             except ProviderError as exc:
                 raise _backend_error(db, limiter, api_key, body.model, start, exc) from exc
-        return _stream_chat_completion(body, messages, prompt, hit, stream, provider, api_key, limiter, start)
+        return _stream_chat_completion(
+            body, messages, prompt, use_cache, hit, stream, provider, api_key, limiter, start
+        )
 
     if hit:
         text, prompt_tokens, completion_tokens, provider, cached = (
@@ -137,12 +158,13 @@ async def chat_completions(
     else:
         try:
             text, prompt_tokens, completion_tokens, provider = await run_completion(
-                body.model, messages, body.temperature
+                body.model, messages, body.temperature, body.max_tokens
             )
         except ProviderError as exc:
             raise _backend_error(db, limiter, api_key, body.model, start, exc) from exc
         cached = False
-        cache.store(body.model, messages, CacheEntry(text, prompt_tokens, completion_tokens))
+        if use_cache:
+            cache.store(body.model, messages, CacheEntry(text, prompt_tokens, completion_tokens))
 
     latency_ms = (time.perf_counter() - start) * 1000
     cost_usd = 0.0 if cached else estimate_cost_usd(body.model, prompt_tokens, completion_tokens)
@@ -151,7 +173,7 @@ async def chat_completions(
         db, limiter, api_key, provider, body.model, cached, prompt_tokens, completion_tokens, cost_usd, latency_ms
     )
 
-    response.headers["x-cache"] = "hit" if cached else "miss"
+    response.headers["x-cache"] = _cache_header(use_cache, cached)
     response.headers["x-provider"] = provider
 
     return ChatCompletionResponse(
@@ -179,6 +201,7 @@ def _stream_chat_completion(
     body: ChatCompletionRequest,
     messages: list[dict],
     prompt: str,
+    use_cache: bool,
     hit: CacheEntry | None,
     stream: AsyncIterator[StreamChunk] | None,
     provider: str | None,
@@ -240,7 +263,8 @@ def _stream_chat_completion(
                     yield _chunk_event(piece.text, provider, False)
             yield "data: [DONE]\n\n"
 
-            cache.store(body.model, messages, CacheEntry(full_text, prompt_tokens, completion_tokens))
+            if use_cache:
+                cache.store(body.model, messages, CacheEntry(full_text, prompt_tokens, completion_tokens))
             latency_ms = (time.perf_counter() - start) * 1000
             cost_usd = estimate_cost_usd(body.model, prompt_tokens, completion_tokens)
             _log_and_bill(
@@ -254,7 +278,7 @@ def _stream_chat_completion(
         _generate(),
         media_type="text/event-stream",
         headers={
-            "x-cache": "hit" if hit is not None else "miss",
+            "x-cache": _cache_header(use_cache, hit is not None),
             "x-provider": "cache" if hit is not None else provider,
             "Cache-Control": "no-cache",
         },
