@@ -1,7 +1,8 @@
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import Integer, cast, func
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -46,33 +47,41 @@ def summary(hours: int = Query(default=24, ge=1, le=24 * 30), db: Session = Depe
     )
 
 
+def _hour_bucket(ts: datetime) -> str:
+    """'YYYY-MM-DDTHH:00:00' in UTC. Postgres returns timezone-aware values;
+    SQLite returns naive ones that were stored as UTC."""
+    if ts.tzinfo is not None:
+        ts = ts.astimezone(timezone.utc)
+    return ts.strftime("%Y-%m-%dT%H:00:00")
+
+
 @router.get("/timeseries", response_model=list[TimeseriesPoint])
 def timeseries(hours: int = Query(default=24, ge=1, le=24 * 30), db: Session = Depends(get_db)):
+    # Bucketed in Python rather than SQL: the previous SQL used SQLite's
+    # strftime(), which doesn't exist in Postgres, so this endpoint failed
+    # on the docker-compose stack (see DECISIONS.md D4).
     since = datetime.now(timezone.utc) - timedelta(hours=hours)
-    bucket_expr = func.strftime("%Y-%m-%dT%H:00:00", RequestLog.created_at)
-    rows = (
-        db.query(
-            bucket_expr.label("bucket"),
-            func.count(RequestLog.id).label("requests"),
-            func.sum(cast(RequestLog.cached, Integer)).label("cache_hits"),
-            func.sum(RequestLog.cost_usd).label("cost_usd"),
-            func.avg(RequestLog.latency_ms).label("avg_latency_ms"),
+    rows = db.query(RequestLog).filter(RequestLog.created_at >= since).all()
+
+    buckets: dict[str, list[RequestLog]] = defaultdict(list)
+    for r in rows:
+        buckets[_hour_bucket(r.created_at)].append(r)
+
+    points = []
+    for bucket in sorted(buckets):
+        bucket_rows = buckets[bucket]
+        # As in /summary: latency averages successful responses only.
+        ok_latencies = [r.latency_ms for r in bucket_rows if r.status == "ok"]
+        points.append(
+            TimeseriesPoint(
+                bucket=bucket,
+                requests=len(bucket_rows),
+                cache_hits=sum(1 for r in bucket_rows if r.cached),
+                cost_usd=round(sum(r.cost_usd for r in bucket_rows), 6),
+                avg_latency_ms=round(sum(ok_latencies) / len(ok_latencies), 2) if ok_latencies else 0.0,
+            )
         )
-        .filter(RequestLog.created_at >= since)
-        .group_by("bucket")
-        .order_by("bucket")
-        .all()
-    )
-    return [
-        TimeseriesPoint(
-            bucket=r.bucket,
-            requests=r.requests,
-            cache_hits=r.cache_hits or 0,
-            cost_usd=round(r.cost_usd or 0.0, 6),
-            avg_latency_ms=round(r.avg_latency_ms or 0.0, 2),
-        )
-        for r in rows
-    ]
+    return points
 
 
 @router.get("/providers", response_model=list[ProviderBreakdown])

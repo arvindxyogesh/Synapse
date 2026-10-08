@@ -115,3 +115,40 @@ trusting that it did.
 
 **Small guard.** Any value other than `bypass` gets a 400. A typo like
 `bypas` would otherwise silently leave the cache *on* and contaminate a run.
+
+---
+
+## D4. Fix the Postgres-only dashboard bug by bucketing in Python, and test on Postgres in CI
+
+**Date:** 2026-10-08
+
+**Context.** `/v1/stats/timeseries` (the dashboard's main chart) grouped rows
+by hour using `strftime()`, a SQLite function. Postgres doesn't have it, so
+on the docker-compose stack the endpoint failed with
+`function strftime(unknown, timestamp with time zone) does not exist`
+(reproduced against `postgres:16-alpine` before fixing). CI never noticed
+because the tests only ran on SQLite, and no test covered that endpoint.
+
+**Options.**
+1. Pick SQL per database (`date_trunc` on Postgres, `strftime` on SQLite).
+   This keeps the work in the database, but it means two code paths, and
+   each one is only tested on one database.
+2. Load the rows for the window and group them by hour in Python, which is
+   what `/v1/stats/summary` already does.
+
+**Decision.** Option 2. One code path, identical behavior on both databases,
+and easy to read. Timestamps are converted to UTC before bucketing, because
+Postgres returns timezone-aware values and SQLite returns naive ones.
+
+**Cost.** Every row in the window (up to 30 days) is loaded into memory. At
+portfolio scale (thousands of rows) that's milliseconds. At millions of rows
+it wouldn't be, and the fix would be option 1 or a pre-aggregated table.
+
+**Preventing a repeat.** A new CI job, `backend-postgres`, runs the whole test
+suite against a real Postgres 16 service container. It also runs
+`alembic upgrade head` (migrations apply cleanly) and `alembic check`
+(migrations match the models, so a forgotten migration fails CI). Locally:
+`TEST_DATABASE_URL=postgresql://... pytest`.
+
+**Also changed.** Timeseries latency now averages successful responses only,
+the same as `/summary` (D1).

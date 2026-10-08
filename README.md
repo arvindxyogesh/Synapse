@@ -382,9 +382,12 @@ cd frontend && npm install && npm run lint && npm run build
 
 Both run in CI on every push (`.github/workflows/ci.yml`). Tests build
 their schema straight from the SQLAlchemy models (no Alembic involved) and
-run against fakeredis, so the ANN cache branch is covered separately with a
-mocked Redis client (`tests/test_cache_ann.py`) since fakeredis doesn't
-implement the vector search commands. `tests/test_openai_compat.py` runs
+run against fakeredis. The backend suite runs twice in CI: once on SQLite
+and once on a real Postgres 16, which also checks that the Alembic
+migrations apply and match the models. To run it on Postgres locally, set
+`TEST_DATABASE_URL=postgresql://user:pass@host:5432/db`. Fakeredis doesn't
+implement the vector search commands, so the ANN cache branch is covered
+separately with a mocked Redis client (`tests/test_cache_ann.py`). `tests/test_openai_compat.py` runs
 the real `openai` SDK against the app in-process (via httpx's ASGI
 transport) to verify drop-in compatibility, not just a schema comparison.
 
