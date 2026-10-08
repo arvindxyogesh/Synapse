@@ -67,6 +67,23 @@ RUN_PROFILES = {
              "repeat_concurrency": "1,16", "eval_limit": None},
 }
 
+# Environment for every vLLM process, identical for every variant.
+VLLM_ENV = {
+    # FlashInfer's top-k/top-p sampler is JIT-compiled on first start, which
+    # needs a matching CUDA toolkit and failed on Great Lakes (pip's CUDA 13.4
+    # nvcc vs 13.0 runtime headers). Every benchmark request uses
+    # temperature=0, i.e. greedy argmax, which doesn't use that sampler, so
+    # turning it off changes nothing measured -- vLLM was only building it
+    # during warm-up. (DECISIONS.md D14.)
+    "VLLM_USE_FLASHINFER_SAMPLER": "0",
+    # vLLM otherwise records usage stats in ~/.config/vllm and sends them,
+    # anonymously, to the vLLM project. Off: not ours to send from shared
+    # university machines, and it wrote to home.
+    "VLLM_NO_USAGE_STATS": "1",
+    "VLLM_DO_NOT_TRACK": "1",
+    "DO_NOT_TRACK": "1",
+}
+
 VLLM_PORT, GATEWAY_PORT, REDIS_PORT = 8001, 8000, 6379
 
 
@@ -144,7 +161,7 @@ def pip_cuda_home(vllm_bin: str) -> Path | None:
 
 
 def _vllm_env(cfg: SessionConfig) -> dict:
-    env = dict(os.environ)
+    env = {**os.environ, **VLLM_ENV}
     # FlashInfer compiles a sampling kernel on first start and needs nvcc.
     # Use the system CUDA if there is one; otherwise (e.g. Great Lakes compute
     # nodes have no /usr/local/cuda, and its newest module is CUDA 12.6 while
@@ -299,6 +316,7 @@ def run_session(cfg: SessionConfig, run_id: str) -> list[dict]:
         "variants": {v: VARIANTS[v] for v in profile["variants"]},
         "git_commit": cfg.git_commit, "git_dirty": cfg.git_dirty, "preflight": pre,
         "cuda_home_for_vllm": _vllm_env(cfg).get("CUDA_HOME"),
+        "vllm_env": VLLM_ENV,
         "nvidia_smi_at_start": subprocess.run(smi_args, capture_output=True, text=True).stdout,
     }, indent=2, default=str))
     # Exact package versions of the vLLM environment (the python next to the vllm executable).

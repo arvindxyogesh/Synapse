@@ -539,3 +539,62 @@ answer would have been graded against the wrong value. Fixed and tested
 (`possibly_truncated`). The 7B model is expected to be more concise. If more
 than a handful of its replies hit the cap in milestone 4, the cap gets
 raised before results are reported.
+
+---
+
+## D14. Running on shared university machines: keep out of home, and avoid compiling kernels at startup
+
+**Date:** 2026-10-08
+
+**Context.** The benchmark moved from Modal to university hardware: a shared
+lab node (`maui`, 8× H200) for a smoke test, then Great Lakes (U-M's Slurm
+cluster, one whole A40 per job). The rule on both was that everything gets
+stored under a designated data/scratch folder, never home. On Great Lakes
+home was already 99.9% full.
+
+**What went wrong, and how it was found.** `env.sh` redirected the usual
+caches (Hugging Face, pip, XDG, Triton, Torch, vLLM's compile cache) into
+scratch. But after the first runs, a check for anything modified in home
+since the jobs started found three more:
+- **FlashInfer**: its kernel cache goes under `$FLASHINFER_WORKSPACE_BASE`,
+  which defaults to home and ignores the XDG variables.
+- **humming-kernels**, a vLLM dependency, writes `~/.humming`
+  (`HUMMING_TMP_DIR` / `HUMMING_CACHE_DIR`).
+- **vLLM's usage statistics**, `~/.config/vllm/usage_stats.json`
+  (`VLLM_CONFIG_ROOT`). vLLM also sends these anonymously to the vLLM
+  project by default.
+
+Cleanup was limited to files whose timestamps and counts showed they came
+from these runs:
+- On Great Lakes, home is back to exactly its post-setup file count.
+- On `maui`, `~/.config/vllm` and `~/.humming` already existed (created
+  2026-09-02 by earlier vLLM work), so they were left in place. The only
+  side effect there is that `usage_stats.json`'s contents were overwritten.
+
+**Fix.** All of these variables are now set in `env.sh`. The runner also
+turns usage statistics off entirely (`VLLM_NO_USAGE_STATS=1`,
+`DO_NOT_TRACK=1`); sending telemetry from shared university machines isn't
+this project's call to make.
+
+**The FlashInfer sampler.** FlashInfer also compiles a *top-k/top-p sampling*
+kernel with `nvcc` the first time vLLM starts. That failed twice:
+- Great Lakes compute nodes have no system CUDA (`/usr/local/cuda`), and
+  their newest CUDA module is 12.6, while vLLM 0.31.0 is built for CUDA 13.
+- The CUDA 13 toolkit that pip installs alongside vLLM doesn't fully agree
+  with itself (`nvcc` 13.4 vs. runtime headers 13.0): "CUDA compiler and CUDA
+  toolkit headers are incompatible."
+
+Options: pin pip's `nvcc` to 13.0, install FlashInfer's prebuilt kernel
+package, or turn the FlashInfer sampler off (`VLLM_USE_FLASHINFER_SAMPLER=0`).
+Turning it off was chosen. **Every request in this benchmark uses
+`temperature=0`**, i.e. greedy decoding, which picks the highest-scoring
+token directly and never runs top-k/top-p sampling. vLLM was only building
+the kernel during start-up warm-up. So the switch changes nothing measured;
+it's the same for every variant and recorded in `session.json`.
+
+**Cost of running on Great Lakes:** start-up is slow. Python imports
+thousands of small files from the cluster's network filesystem (GPFS) with
+nothing cached on the node: about 7 minutes for the flag check and about 8
+minutes before vLLM starts loading the model, vs. 87 seconds total on
+`maui`. That's around $0.10 per variant at the job's billed rate, accepted
+rather than adding a "copy the environment to local disk first" step.

@@ -27,3 +27,11 @@ def test_vllm_env_prefers_existing_cuda_home(monkeypatch, tmp_path):
     env = gpu_session._vllm_env(cfg)
     assert env["CUDA_HOME"] == "/opt/cuda-from-module"
     assert env["PATH"].split(":")[0] == str(Path(cfg.vllm_bin).parent)
+
+
+def test_vllm_env_turns_off_flashinfer_sampler_and_usage_stats(tmp_path):
+    cfg = gpu_session.SessionConfig(mode="smoke", results_dir=tmp_path, gateway_python="python",
+                                    gpu_label="test", gpu_price_per_hour=None)
+    env = gpu_session._vllm_env(cfg)
+    assert env["VLLM_USE_FLASHINFER_SAMPLER"] == "0"
+    assert env["VLLM_NO_USAGE_STATS"] == "1" and env["DO_NOT_TRACK"] == "1"
