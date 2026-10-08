@@ -133,6 +133,12 @@ def _stop(procs) -> None:
 
 def _vllm_env(cfg: SessionConfig) -> dict:
     env = dict(os.environ)
+    if "/" in cfg.vllm_bin:
+        # Same effect as activating vLLM's environment: its bin/ goes first on
+        # PATH. Needed because FlashInfer compiles a sampling kernel on first
+        # start and looks for the `ninja` build tool on PATH (found the hard
+        # way: the first lab smoke run died with "No such file: 'ninja'").
+        env["PATH"] = f"{Path(cfg.vllm_bin).parent}{os.pathsep}{env.get('PATH', '')}"
     if cfg.cuda_device is not None:
         # CUDA's default numbering is "fastest first", which isn't guaranteed to
         # match nvidia-smi's. PCI_BUS_ID order makes --cuda-device N the same
