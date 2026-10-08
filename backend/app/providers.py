@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -7,6 +8,8 @@ from dataclasses import dataclass
 import httpx
 
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class ProviderError(Exception):
@@ -160,9 +163,9 @@ class VLLMProvider(BaseProvider):
 
 class MockProvider(BaseProvider):
     """Deterministic canned responses -- no external dependency at all.
-    Used automatically when Ollama is unreachable, and in tests/CI, so the
-    whole gateway + dashboard is runnable and demoable with zero local
-    model setup."""
+    Used when MOCK_MODE is set (tests/CI), or when the real backend fails
+    and MOCK_FALLBACK is set, so the whole gateway + dashboard is runnable
+    and demoable with zero local model setup."""
 
     name = "mock"
 
@@ -192,18 +195,25 @@ def _real_provider(settings) -> BaseProvider:
     return OllamaProvider(settings.ollama_base_url)
 
 
+def _backend_failed(provider: BaseProvider, exc: Exception) -> ProviderError:
+    return ProviderError(f"{provider.name} backend failed: {exc!r}")
+
+
 async def run_completion(model: str, messages: list[dict], temperature: float) -> tuple[str, int, int, str]:
-    """Route to the configured provider (see PROVIDER), falling back to the
-    mock provider if it's unreachable or MOCK_MODE is set. Returns (text,
-    prompt_tokens, completion_tokens, provider_name)."""
+    """Route to the configured provider (see PROVIDER). Returns (text,
+    prompt_tokens, completion_tokens, provider_name). Raises ProviderError
+    if the backend fails, unless MOCK_FALLBACK is set, in which case the
+    mock provider answers instead (and a warning is logged)."""
     settings = get_settings()
     if not settings.mock_mode:
         provider = _real_provider(settings)
         try:
             text, pt, ct = await provider.complete(model, messages, temperature)
             return text, pt, ct, provider.name
-        except (httpx.HTTPError, ProviderError):
-            pass  # fall through to mock
+        except (httpx.HTTPError, ProviderError) as exc:
+            if not settings.mock_fallback:
+                raise _backend_failed(provider, exc) from exc
+            logger.warning("%s backend failed (%r); serving a mock response (MOCK_FALLBACK=true)", provider.name, exc)
 
     provider = MockProvider()
     text, pt, ct = await provider.complete(model, messages, temperature)
@@ -213,18 +223,25 @@ async def run_completion(model: str, messages: list[dict], temperature: float) -
 async def run_streaming_completion(
     model: str, messages: list[dict], temperature: float
 ) -> tuple[AsyncIterator[StreamChunk], str]:
-    """Same routing/fallback behavior as run_completion, but streamed. If
-    the real provider fails before yielding anything, falls back to the
-    mock provider's stream instead -- nothing has been sent to the client
-    yet at that point, so the fallback is invisible to callers."""
+    """Same routing/failure behavior as run_completion, but streamed. Waits
+    for the first chunk before returning, so a backend that fails up front
+    raises ProviderError here -- before any response has been sent, while
+    the caller can still return a proper error status. A failure *after*
+    the first chunk ends the stream early (no [DONE] marker)."""
     settings = get_settings()
     if not settings.mock_mode:
         provider = _real_provider(settings)
         agen = provider.stream(model, messages, temperature)
         try:
             first_chunk = await agen.__anext__()
-        except (StopAsyncIteration, httpx.HTTPError, ProviderError):
-            pass  # unreachable or produced nothing; fall through to mock
+        except StopAsyncIteration as exc:
+            if not settings.mock_fallback:
+                raise ProviderError(f"{provider.name} backend returned an empty stream") from exc
+            logger.warning("%s backend returned an empty stream; serving a mock response", provider.name)
+        except (httpx.HTTPError, ProviderError) as exc:
+            if not settings.mock_fallback:
+                raise _backend_failed(provider, exc) from exc
+            logger.warning("%s backend failed (%r); serving a mock response (MOCK_FALLBACK=true)", provider.name, exc)
         else:
             async def _prefixed() -> AsyncIterator[StreamChunk]:
                 yield first_chunk

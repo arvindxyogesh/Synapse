@@ -29,8 +29,11 @@ def summary(hours: int = Query(default=24, ge=1, le=24 * 30), db: Session = Depe
     cache_hits = sum(1 for r in rows if r.cached)
     total_cost = sum(r.cost_usd for r in rows)
     cost_saved = sum(estimate_cost_usd(r.model, r.prompt_tokens, r.completion_tokens) for r in rows if r.cached)
-    latencies = sorted(r.latency_ms for r in rows)
-    avg_latency = sum(latencies) / total
+    # Latency stats cover successful responses only: a failed backend call
+    # (status="error") has a latency too, but averaging it in would mix
+    # "how fast do answers arrive" with "how fast do errors arrive".
+    latencies = sorted(r.latency_ms for r in rows if r.status == "ok") or [0.0]
+    avg_latency = sum(latencies) / len(latencies)
     p95_latency = latencies[min(int(len(latencies) * 0.95), len(latencies) - 1)]
 
     return StatsSummary(

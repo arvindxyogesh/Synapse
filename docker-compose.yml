@@ -44,6 +44,9 @@ services:
       DEFAULT_MODEL: ${DEFAULT_MODEL:-llama3}
       ADMIN_KEY: ${ADMIN_KEY:-change-me-admin-key}
       MOCK_MODE: ${MOCK_MODE:-false}
+      # On here (off in the app itself) so `docker compose up` demos with no
+      # model running. Turn it off for any measurement -- see DECISIONS.md.
+      MOCK_FALLBACK: ${MOCK_FALLBACK:-true}
     ports:
       - "8000:8000"
     depends_on:

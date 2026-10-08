@@ -65,10 +65,18 @@ class Settings(BaseSettings):
     # cooldown gives the EWMA time to catch up between adjustments.
     threshold_adjustment_cooldown_samples: int = 10
 
-    # If true (or if Ollama is unreachable), the gateway serves canned
-    # responses instead of calling a model -- lets the whole stack run and
-    # be demoed with zero local setup.
+    # If true, the gateway never calls a model and always serves canned
+    # responses -- lets the whole stack run and be demoed with zero local
+    # setup.
     mock_mode: bool = os.getenv("MOCK_MODE", "false").lower() == "true"
+
+    # If true, a failing backend (unreachable, timeout, 5xx) is replaced by
+    # a canned mock response instead of an error. Off by default: a silent
+    # fallback makes a crashed backend look like a fast, healthy one, which
+    # corrupts every latency/throughput number recorded while it happens.
+    # docker-compose turns it on so `docker compose up` still demos with no
+    # model running.
+    mock_fallback: bool = False
 
     model_config = SettingsConfigDict(env_file=".env")
 

@@ -16,7 +16,7 @@ from app.db import SessionLocal, get_db
 from app.judge import judge_same_intent
 from app.models import ApiKey, RequestLog
 from app.pricing import estimate_cost_usd
-from app.providers import run_completion, run_streaming_completion
+from app.providers import ProviderError, StreamChunk, run_completion, run_streaming_completion
 from app.ratelimit import RateLimiter, get_rate_limiter
 from app.schemas import ChatCompletionChoice, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, Usage
 from app.threshold_controller import get_threshold_controller
@@ -47,6 +47,7 @@ def _log_and_bill(
     completion_tokens: int,
     cost_usd: float,
     latency_ms: float,
+    status: str = "ok",
 ) -> None:
     db.add(
         RequestLog(
@@ -58,7 +59,7 @@ def _log_and_bill(
             completion_tokens=completion_tokens,
             cost_usd=cost_usd,
             latency_ms=latency_ms,
-            status="ok",
+            status=status,
         )
     )
     db.commit()
@@ -77,6 +78,16 @@ async def _shadow_verify(model: str, source_prompt: str, new_prompt: str) -> Non
         get_threshold_controller().record_verification(model, is_false_positive=not same_intent)
     except Exception:
         pass
+
+
+def _backend_error(
+    db: Session, limiter: RateLimiter, api_key: ApiKey, model: str, start: float, exc: ProviderError
+) -> HTTPException:
+    """Log a failed backend call as an error row (so error rates show up per
+    model instead of disappearing) and build the 502 to return."""
+    latency_ms = (time.perf_counter() - start) * 1000
+    _log_and_bill(db, limiter, api_key, "error", model, False, 0, 0, 0.0, latency_ms, status="error")
+    return HTTPException(status_code=502, detail=str(exc))
 
 
 def _maybe_shadow_verify(model: str, hit: CacheEntry, new_prompt: str) -> None:
@@ -104,7 +115,15 @@ async def chat_completions(
     hit = cache.lookup(body.model, messages, threshold=threshold)
 
     if body.stream:
-        return _stream_chat_completion(body, messages, prompt, hit, api_key, limiter, start)
+        stream = provider = None
+        if hit is None:
+            # Start the backend stream *before* sending any response, so a
+            # backend that's down can still get a real error status.
+            try:
+                stream, provider = await run_streaming_completion(body.model, messages, body.temperature)
+            except ProviderError as exc:
+                raise _backend_error(db, limiter, api_key, body.model, start, exc) from exc
+        return _stream_chat_completion(body, messages, prompt, hit, stream, provider, api_key, limiter, start)
 
     if hit:
         text, prompt_tokens, completion_tokens, provider, cached = (
@@ -116,9 +135,12 @@ async def chat_completions(
         )
         _maybe_shadow_verify(body.model, hit, prompt)
     else:
-        text, prompt_tokens, completion_tokens, provider = await run_completion(
-            body.model, messages, body.temperature
-        )
+        try:
+            text, prompt_tokens, completion_tokens, provider = await run_completion(
+                body.model, messages, body.temperature
+            )
+        except ProviderError as exc:
+            raise _backend_error(db, limiter, api_key, body.model, start, exc) from exc
         cached = False
         cache.store(body.model, messages, CacheEntry(text, prompt_tokens, completion_tokens))
 
@@ -158,6 +180,8 @@ def _stream_chat_completion(
     messages: list[dict],
     prompt: str,
     hit: CacheEntry | None,
+    stream: AsyncIterator[StreamChunk] | None,
+    provider: str | None,
     api_key: ApiKey,
     limiter: RateLimiter,
     start: float,
@@ -202,7 +226,6 @@ def _stream_chat_completion(
                 )
                 return
 
-            stream, provider = await run_streaming_completion(body.model, messages, body.temperature)
             full_text = ""
             prompt_tokens = completion_tokens = 0
             async for piece in stream:
@@ -232,7 +255,7 @@ def _stream_chat_completion(
         media_type="text/event-stream",
         headers={
             "x-cache": "hit" if hit is not None else "miss",
-            "x-provider": "cache" if hit is not None else "pending",
+            "x-provider": "cache" if hit is not None else provider,
             "Cache-Control": "no-cache",
         },
     )

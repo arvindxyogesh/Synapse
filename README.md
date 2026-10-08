@@ -271,7 +271,7 @@ this run.
 
 | Layer | Tech |
 |---|---|
-| Model serving | Pluggable via `PROVIDER`: [Ollama](https://ollama.com) (default, CPU) or [vLLM](https://github.com/vllm-project/vllm) (GPU, OpenAI-compatible), with an automatic mock-provider fallback |
+| Model serving | Pluggable via `PROVIDER`: [Ollama](https://ollama.com) (default, CPU) or [vLLM](https://github.com/vllm-project/vllm) (GPU, OpenAI-compatible), with an opt-in mock-provider fallback (`MOCK_FALLBACK`) |
 | Backend | FastAPI, SQLAlchemy, Alembic |
 | Cache | Redis, with ANN vector search (Query Engine / RediSearch) when available, falling back to a linear scan otherwise |
 | Cache correctness | Adaptive per-model similarity threshold, tuned online by LLM-judge shadow verification |
@@ -296,9 +296,11 @@ docker compose up --build
 Engine module the semantic cache uses for ANN vector search, and the
 backend image runs `alembic upgrade head` on startup before serving traffic.
 
-If the configured provider isn't running locally, the gateway automatically
-serves mock responses instead of erroring out — you can still exercise the
-whole cache/cost/dashboard pipeline with zero model setup. To use real
+If the configured provider isn't running, the compose stack serves mock
+responses instead of erroring out (`MOCK_FALLBACK=true`, the compose
+default) — you can still exercise the whole cache/cost/dashboard pipeline
+with zero model setup. Outside compose the fallback is off by default and a
+failing backend returns HTTP 502, logged as an error row. To use real
 open-weight models with the default backend: `ollama pull llama3` then
 `ollama serve`.
 
@@ -388,7 +390,7 @@ backend/
   app/
     main.py           FastAPI app + router wiring
     providers.py       Ollama + vLLM clients, pluggable via PROVIDER, with
-                        mock fallback, incl. streaming
+                        opt-in mock fallback, incl. streaming
     cache.py           semantic cache: exact match, ANN vector search
                         (Redis Query Engine) with linear-scan fallback
     embeddings.py      sentence-transformers embedder + hashing fallback
