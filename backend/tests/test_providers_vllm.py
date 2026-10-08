@@ -5,6 +5,7 @@ import pytest
 
 import app.providers as providers_module
 from app.config import get_settings
+from app.model_registry import resolve_model
 from app.providers import OllamaProvider, VLLMProvider
 
 _RealAsyncClient = httpx.AsyncClient
@@ -25,15 +26,16 @@ def _client_factory(handler):
     return factory
 
 
-def test_real_provider_selects_ollama_by_default():
-    assert isinstance(providers_module._real_provider(get_settings()), OllamaProvider)
+def test_unregistered_model_goes_to_ollama_by_default():
+    route = resolve_model("llama3", get_settings())
+    assert isinstance(providers_module.provider_for(route), OllamaProvider)
 
 
-def test_real_provider_selects_vllm_when_configured(monkeypatch):
+def test_unregistered_model_goes_to_vllm_when_configured(monkeypatch):
     settings = get_settings()
     monkeypatch.setattr(settings, "provider", "vllm")
     monkeypatch.setattr(settings, "vllm_base_url", "http://example:9000")
-    provider = providers_module._real_provider(settings)
+    provider = providers_module.provider_for(resolve_model("llama3", settings))
     assert isinstance(provider, VLLMProvider)
     assert provider.base_url == "http://example:9000"
 

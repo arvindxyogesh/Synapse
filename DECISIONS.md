@@ -194,3 +194,130 @@ able to raise the timeout rather than record those requests as errors.
 generator itself* can be the bottleneck. The milestone 3 harness will record
 its own CPU usage, and will run on a machine with enough cores to keep up, so
 a slow client isn't reported as a slow server.
+
+---
+
+## D6. A model registry file, with the old single-backend behavior as the fallback
+
+**Date:** 2026-10-08
+
+**Context.** The benchmark needs the 16-bit, 4-bit AWQ and 8-bit GPTQ
+versions of Qwen2.5-7B-Instruct behind one gateway, each as its own model
+name, so requests can be routed to any of them and metrics are recorded per
+variant. Before this change there was one global backend (`PROVIDER` plus one
+URL), and the `model` string was just passed through to it.
+
+**Why each variant needs its own server.** A vLLM server loads one set of
+weights at startup, so a 16-bit and a 4-bit checkpoint are two separate
+`vllm serve` processes on two ports. The gateway has to know which port
+serves which name. (For the benchmark they run one at a time on the same
+GPU, as explained in docs/PLAN.md. The registry still lists all three, so
+whichever one is up can be reached by name.)
+
+**Options.**
+1. Environment variables per model (`MODEL_QWEN_AWQ_URL=...`). That gets
+   unreadable past two models, and model names don't map cleanly onto
+   environment variable names.
+2. A database table, editable through the admin API. It's dynamic, but it
+   needs a migration, endpoints and UI, and it's far more than "which port
+   serves which model" requires.
+3. A small TOML file (`MODEL_REGISTRY_PATH`), parsed with Python's built-in
+   `tomllib`, so no new dependency.
+
+**Decision.** Option 3. Each entry is just `provider`, `base_url` and an
+optional `upstream_model` (the name the backend itself uses, e.g.
+`Qwen/Qwen2.5-7B-Instruct-AWQ`, so clients can use a short name).
+Unregistered names keep the old behavior, so nothing that worked before
+breaks. The file is checked strictly at startup: an unknown provider, a URL
+that isn't http(s), or a misspelled setting (`base_ur`) stops the gateway
+with a clear error. A silently ignored typo would send traffic to the wrong
+backend and mislabel the results.
+
+**Cost.** Changing the registry needs a gateway restart. That's fine for a
+benchmark and a demo; it wouldn't be for a production system that adds
+models often (that's where option 2 would win).
+
+**Also added.** `GET /v1/models`, the OpenAI-compatible list (what
+`client.models.list()` calls), tested with the real `openai` SDK.
+
+---
+
+## D7. Logging time to first token (TTFT): what exactly is measured
+
+**Date:** 2026-10-08
+
+**Context.** For a chat product, two latencies matter and they can move in
+opposite directions. **TTFT** is how long the user stares at a blank screen.
+**End-to-end latency** is how long until the whole answer is there.
+Quantization can change them differently: TTFT is dominated by *prefill*
+(processing the prompt, which is compute-heavy), while the rest is *decode*
+(one token at a time, which is limited by memory bandwidth). The gateway only
+logged end-to-end latency, so it now logs TTFT too (`request_logs.ttft_ms`,
+Alembic migration `d0caa44f82d4`).
+
+**What the number means.** From the moment the handler starts (after auth
+and rate limiting) to the moment the first chunk *with actual text* is handed
+to the response stream. Chunks with no text (some backends send an empty
+first chunk carrying only the role) don't count, because the user sees
+nothing yet.
+
+**Choices made along the way.**
+- **Streaming only.** A non-streamed reply arrives all at once, so it has no
+  separate "first token". Those rows store `NULL`, not 0 and not a copy of
+  the total latency, so averages over TTFT can't be quietly dragged by
+  requests that never had one.
+- **Gateway-side vs. client-side.** This is the gateway's view. A client
+  also pays network time, so its TTFT is a bit higher. The benchmark records
+  its own client-side TTFT as the headline number, and the logged one is
+  what the gateway can report per model on its own. Comparing the two is a
+  check on the gateway's overhead.
+- **Cache hits get a TTFT too.** It's what a user actually experiences on a
+  hit, and it shows how much faster a hit starts than a miss.
+
+**Migration safety.** The column is nullable, so adding it to a table that
+already has rows needs no backfill. It was tested upgrade, then downgrade,
+then upgrade on SQLite, and CI applies it to Postgres and runs `alembic
+check` there.
+
+---
+
+## D8. Fixed-length outputs for the speed benchmark (`ignore_eos`)
+
+**Date:** 2026-10-08
+
+**Context.** Tokens per second and end-to-end latency only compare fairly if
+every variant generates *the same number of tokens*. Quantization changes a
+model's outputs slightly, so given the same prompt the 4-bit variant might
+stop after 180 tokens where the 16-bit one writes 240. Its end-to-end latency
+would look better for a reason that has nothing to do with speed. `max_tokens`
+alone only sets a ceiling; the model can still stop earlier.
+
+**What `ignore_eos` does.** A model signals "I'm done" by generating a
+special end-of-sequence (EOS) token. vLLM's `ignore_eos` option tells it to
+keep going anyway until `max_tokens` is reached. Every request then produces
+exactly `max_tokens` tokens, and speed is measured on identical amounts of
+work.
+
+**Options.**
+1. Don't force a length. Report tokens/s from each variant's actual token
+   counts and accept that latency comparisons are skewed. Simple, but the
+   headline latency numbers would be misleading.
+2. Pick prompts that always produce long answers and hope they hit the cap.
+   This is unreliable, and still uncontrolled.
+3. Pass vLLM's `ignore_eos` through the gateway.
+
+**Decision.** Option 3 for the *speed* runs. `ignore_eos` isn't part of the
+OpenAI API; it's a vLLM extension, and the OpenAI SDK sends it via
+`extra_body`. The gateway accepts it as an explicit field and forwards it
+only to vLLM. It returns 400 if `max_tokens` is missing (otherwise the model
+would generate until the context window is full) or if the model is served
+by Ollama, which has no equivalent, so the benchmark can't *think* it's
+running fixed-length outputs when it isn't.
+
+**What it does NOT apply to.** The *quality* evaluation (GSM8K) runs without
+`ignore_eos`. There the model must stop naturally, because padding an answer
+with extra tokens after it should have stopped would corrupt the
+answer-extraction step. Output text after the EOS point is meaningless filler,
+which is fine for measuring speed and wrong for measuring correctness.
+
+**Cost.** One non-standard request field, documented in the README.

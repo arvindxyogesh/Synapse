@@ -126,6 +126,7 @@ def request_log(
             completion_tokens=r.completion_tokens,
             cost_usd=r.cost_usd,
             latency_ms=round(r.latency_ms, 2),
+            ttft_ms=round(r.ttft_ms, 2) if r.ttft_ms is not None else None,
             status=r.status,
             created_at=r.created_at.isoformat(),
         )

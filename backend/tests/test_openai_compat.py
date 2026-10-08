@@ -69,3 +69,20 @@ async def test_real_openai_sdk_wrong_key_is_rejected():
     )
     with pytest.raises(openai.AuthenticationError):
         await bad_client.chat.completions.create(model="llama3", messages=[{"role": "user", "content": "hi"}])
+
+
+@pytest.mark.asyncio
+async def test_real_openai_sdk_lists_models(openai_client):
+    models = [m async for m in openai_client.models.list()]
+    assert [m.id for m in models] == ["llama3"]  # DEFAULT_MODEL, no registry configured
+    assert models[0].object == "model"
+
+
+@pytest.mark.asyncio
+async def test_real_openai_sdk_can_bypass_cache_with_extra_headers(openai_client):
+    raw = await openai_client.chat.completions.with_raw_response.create(
+        model="llama3",
+        messages=[{"role": "user", "content": "bypass via sdk"}],
+        extra_headers={"x-synapse-cache": "bypass"},
+    )
+    assert raw.headers["x-cache"] == "bypass"

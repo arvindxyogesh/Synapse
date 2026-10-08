@@ -3,10 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import admin, gateway, stats
 from app.embeddings import get_embedder
+from app.model_registry import get_registry
 
 # Schema is managed by Alembic migrations (see alembic/ and
 # `alembic upgrade head`), not create_all-on-startup -- run migrations
 # before starting the app (the Docker image's CMD does this automatically).
+
+# Load (and validate) the model registry now: a broken MODEL_REGISTRY_PATH
+# should stop the server at startup, not fail every request later.
+get_registry()
 
 app = FastAPI(
     title="Synapse",

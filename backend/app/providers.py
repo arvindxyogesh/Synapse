@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import httpx
 
 from app.config import get_settings
+from app.model_registry import ModelRoute, resolve_model
 
 logger = logging.getLogger(__name__)
 
@@ -30,13 +31,28 @@ class BaseProvider(ABC):
 
     @abstractmethod
     async def complete(
-        self, model: str, messages: list[dict], temperature: float, max_tokens: int | None = None
+        self,
+        model: str,
+        messages: list[dict],
+        temperature: float,
+        max_tokens: int | None = None,
+        ignore_eos: bool = False,
     ) -> tuple[str, int, int]:
-        """Return (response_text, prompt_tokens, completion_tokens)."""
+        """Return (response_text, prompt_tokens, completion_tokens).
+
+        ignore_eos is a vLLM-only extension (keep generating past the
+        model's end-of-sequence token, up to max_tokens); the gateway
+        rejects it for other backends before a provider is ever called, so
+        the others accept and ignore it."""
 
     @abstractmethod
     def stream(
-        self, model: str, messages: list[dict], temperature: float, max_tokens: int | None = None
+        self,
+        model: str,
+        messages: list[dict],
+        temperature: float,
+        max_tokens: int | None = None,
+        ignore_eos: bool = False,
     ) -> AsyncIterator[StreamChunk]:
         """Yield StreamChunk pieces as they become available; the final
         chunk has done=True and carries the token counts."""
@@ -69,7 +85,12 @@ class OllamaProvider(BaseProvider):
         self.base_url = base_url.rstrip("/")
 
     async def complete(
-        self, model: str, messages: list[dict], temperature: float, max_tokens: int | None = None
+        self,
+        model: str,
+        messages: list[dict],
+        temperature: float,
+        max_tokens: int | None = None,
+        ignore_eos: bool = False,
     ) -> tuple[str, int, int]:
         options = _ollama_options(temperature, max_tokens)
         payload = {"model": model, "messages": messages, "stream": False, "options": options}
@@ -83,7 +104,12 @@ class OllamaProvider(BaseProvider):
         return text, prompt_tokens, completion_tokens
 
     async def stream(
-        self, model: str, messages: list[dict], temperature: float, max_tokens: int | None = None
+        self,
+        model: str,
+        messages: list[dict],
+        temperature: float,
+        max_tokens: int | None = None,
+        ignore_eos: bool = False,
     ) -> AsyncIterator[StreamChunk]:
         options = _ollama_options(temperature, max_tokens)
         payload = {"model": model, "messages": messages, "stream": True, "options": options}
@@ -126,11 +152,18 @@ class VLLMProvider(BaseProvider):
         return {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
 
     async def complete(
-        self, model: str, messages: list[dict], temperature: float, max_tokens: int | None = None
+        self,
+        model: str,
+        messages: list[dict],
+        temperature: float,
+        max_tokens: int | None = None,
+        ignore_eos: bool = False,
     ) -> tuple[str, int, int]:
         payload = {"model": model, "messages": messages, "stream": False, "temperature": temperature}
         if max_tokens is not None:
             payload["max_tokens"] = max_tokens
+        if ignore_eos:
+            payload["ignore_eos"] = True
         async with httpx.AsyncClient(timeout=_timeout()) as client:
             resp = await client.post(
                 f"{self.base_url}/v1/chat/completions", json=payload, headers=self._headers()
@@ -144,7 +177,12 @@ class VLLMProvider(BaseProvider):
         return text, prompt_tokens, completion_tokens
 
     async def stream(
-        self, model: str, messages: list[dict], temperature: float, max_tokens: int | None = None
+        self,
+        model: str,
+        messages: list[dict],
+        temperature: float,
+        max_tokens: int | None = None,
+        ignore_eos: bool = False,
     ) -> AsyncIterator[StreamChunk]:
         # stream_options.include_usage asks vLLM (an OpenAI-spec extension)
         # for a final chunk carrying exact token counts, instead of falling
@@ -159,6 +197,8 @@ class VLLMProvider(BaseProvider):
         }
         if max_tokens is not None:
             payload["max_tokens"] = max_tokens
+        if ignore_eos:
+            payload["ignore_eos"] = True
         prompt_fallback = _estimate_tokens(" ".join(m["content"] for m in messages))
         text_so_far = ""
         async with httpx.AsyncClient(timeout=_timeout()) as client:
@@ -199,7 +239,12 @@ class MockProvider(BaseProvider):
     name = "mock"
 
     async def complete(
-        self, model: str, messages: list[dict], temperature: float, max_tokens: int | None = None
+        self,
+        model: str,
+        messages: list[dict],
+        temperature: float,
+        max_tokens: int | None = None,
+        ignore_eos: bool = False,
     ) -> tuple[str, int, int]:
         last_user = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
         text = f"[mock:{model}] This is a canned response to: {last_user[:120]}"
@@ -208,7 +253,12 @@ class MockProvider(BaseProvider):
         return text, prompt_tokens, completion_tokens
 
     async def stream(
-        self, model: str, messages: list[dict], temperature: float, max_tokens: int | None = None
+        self,
+        model: str,
+        messages: list[dict],
+        temperature: float,
+        max_tokens: int | None = None,
+        ignore_eos: bool = False,
     ) -> AsyncIterator[StreamChunk]:
         last_user = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
         text = f"[mock:{model}] This is a canned response to: {last_user[:120]}"
@@ -221,33 +271,41 @@ class MockProvider(BaseProvider):
         yield StreamChunk(text="", done=True, prompt_tokens=prompt_tokens, completion_tokens=_estimate_tokens(text))
 
 
-def _real_provider(settings) -> BaseProvider:
-    """The non-mock backend selected by PROVIDER (default "ollama")."""
-    if settings.provider == "vllm":
-        return VLLMProvider(settings.vllm_base_url, settings.vllm_api_key)
-    return OllamaProvider(settings.ollama_base_url)
+def provider_for(route: ModelRoute) -> BaseProvider:
+    """The real (non-mock) backend client for a resolved model route."""
+    if route.provider == "vllm":
+        return VLLMProvider(route.base_url, get_settings().vllm_api_key)
+    return OllamaProvider(route.base_url)
 
 
-def _backend_failed(provider: BaseProvider, exc: Exception) -> ProviderError:
-    return ProviderError(f"{provider.name} backend failed: {exc!r}")
+def _backend_failed(provider: BaseProvider, model: str, exc: Exception) -> ProviderError:
+    return ProviderError(f"{provider.name} backend failed for model '{model}': {exc!r}")
 
 
 async def run_completion(
-    model: str, messages: list[dict], temperature: float, max_tokens: int | None = None
+    model: str,
+    messages: list[dict],
+    temperature: float,
+    max_tokens: int | None = None,
+    ignore_eos: bool = False,
 ) -> tuple[str, int, int, str]:
-    """Route to the configured provider (see PROVIDER). Returns (text,
+    """Route to the backend for `model` (its registry entry, else PROVIDER --
+    see app/model_registry.py). Returns (text,
     prompt_tokens, completion_tokens, provider_name). Raises ProviderError
     if the backend fails, unless MOCK_FALLBACK is set, in which case the
     mock provider answers instead (and a warning is logged)."""
     settings = get_settings()
     if not settings.mock_mode:
-        provider = _real_provider(settings)
+        route = resolve_model(model, settings)
+        provider = provider_for(route)
         try:
-            text, pt, ct = await provider.complete(model, messages, temperature, max_tokens)
+            text, pt, ct = await provider.complete(
+                route.upstream_model, messages, temperature, max_tokens, ignore_eos
+            )
             return text, pt, ct, provider.name
         except (httpx.HTTPError, ProviderError) as exc:
             if not settings.mock_fallback:
-                raise _backend_failed(provider, exc) from exc
+                raise _backend_failed(provider, model, exc) from exc
             logger.warning("%s backend failed (%r); serving a mock response (MOCK_FALLBACK=true)", provider.name, exc)
 
     provider = MockProvider()
@@ -256,7 +314,11 @@ async def run_completion(
 
 
 async def run_streaming_completion(
-    model: str, messages: list[dict], temperature: float, max_tokens: int | None = None
+    model: str,
+    messages: list[dict],
+    temperature: float,
+    max_tokens: int | None = None,
+    ignore_eos: bool = False,
 ) -> tuple[AsyncIterator[StreamChunk], str]:
     """Same routing/failure behavior as run_completion, but streamed. Waits
     for the first chunk before returning, so a backend that fails up front
@@ -265,17 +327,18 @@ async def run_streaming_completion(
     the first chunk ends the stream early (no [DONE] marker)."""
     settings = get_settings()
     if not settings.mock_mode:
-        provider = _real_provider(settings)
-        agen = provider.stream(model, messages, temperature, max_tokens)
+        route = resolve_model(model, settings)
+        provider = provider_for(route)
+        agen = provider.stream(route.upstream_model, messages, temperature, max_tokens, ignore_eos)
         try:
             first_chunk = await agen.__anext__()
         except StopAsyncIteration as exc:
             if not settings.mock_fallback:
-                raise ProviderError(f"{provider.name} backend returned an empty stream") from exc
+                raise ProviderError(f"{provider.name} backend returned an empty stream for model '{model}'") from exc
             logger.warning("%s backend returned an empty stream; serving a mock response", provider.name)
         except (httpx.HTTPError, ProviderError) as exc:
             if not settings.mock_fallback:
-                raise _backend_failed(provider, exc) from exc
+                raise _backend_failed(provider, model, exc) from exc
             logger.warning("%s backend failed (%r); serving a mock response (MOCK_FALLBACK=true)", provider.name, exc)
         else:
             async def _prefixed() -> AsyncIterator[StreamChunk]:

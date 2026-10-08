@@ -44,6 +44,10 @@ class RequestLog(Base):
     completion_tokens: Mapped[int] = mapped_column(Integer, default=0)
     cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
     latency_ms: Mapped[float] = mapped_column(Float, default=0.0)
+    # Time to first token: request start -> first content chunk handed to
+    # the response stream. Streaming requests only (None otherwise), since a
+    # non-streamed reply arrives all at once and has no separate first token.
+    ttft_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(String, default="ok")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
 

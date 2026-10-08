@@ -1,0 +1,30 @@
+# Model registry for Synapse -- copy to models.toml and point the gateway at
+# it with MODEL_REGISTRY_PATH=models.toml. See backend/app/model_registry.py.
+#
+# Each entry gives one gateway model name (what clients send as "model") its
+# own backend. Names that aren't listed here still go to PROVIDER as usual.
+#
+# These are the variants used by the quantization benchmark (docs/PLAN.md):
+# the same model, Qwen2.5-7B-Instruct, at three weight precisions, each from
+# the Qwen team's own checkpoints and each on its own vLLM server.
+
+[models."qwen2.5-7b-bf16"]
+provider = "vllm"
+base_url = "http://localhost:8001"
+upstream_model = "Qwen/Qwen2.5-7B-Instruct"       # 16-bit weights, the baseline
+
+[models."qwen2.5-7b-awq"]
+provider = "vllm"
+base_url = "http://localhost:8002"
+upstream_model = "Qwen/Qwen2.5-7B-Instruct-AWQ"   # 4-bit weights (AWQ)
+
+[models."qwen2.5-7b-gptq-int8"]
+provider = "vllm"
+base_url = "http://localhost:8003"
+upstream_model = "Qwen/Qwen2.5-7B-Instruct-GPTQ-Int8"  # 8-bit weights (GPTQ)
+
+# A CPU model through Ollama can sit behind the same gateway:
+[models."qwen2.5-0.5b"]
+provider = "ollama"
+base_url = "http://localhost:11434"
+upstream_model = "qwen2.5:0.5b"

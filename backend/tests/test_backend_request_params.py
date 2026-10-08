@@ -2,8 +2,10 @@
 
 max_tokens must arrive in each backend's own wire format -- without it,
 output length is uncontrolled and tokens/s comparisons between models are
-meaningless. The backend timeout must be configurable, so long generations
-in a deep queue aren't recorded as errors."""
+meaningless. ignore_eos (vLLM only) makes every reply exactly max_tokens
+long, so variants can be compared at a fixed output length. The backend
+timeout must be configurable, so long generations in a deep queue aren't
+recorded as errors."""
 
 import json
 
@@ -126,3 +128,77 @@ async def test_backend_timeout_is_configurable(monkeypatch):
     monkeypatch.setattr(providers_module.httpx, "AsyncClient", factory)
     await VLLMProvider("http://vllm").complete("m", _MESSAGES, 0.0)
     assert seen_timeouts == [300.0]
+
+
+# -- ignore_eos -------------------------------------------------------------
+
+_SSE_BODY = (
+    'data: {"choices": [{"delta": {"content": "hi"}}]}\n\n'
+    'data: {"choices": [], "usage": {"prompt_tokens": 1, "completion_tokens": 1}}\n\n'
+    "data: [DONE]\n\n"
+)
+
+
+@pytest.mark.asyncio
+async def test_vllm_sends_ignore_eos_when_set(monkeypatch):
+    sent = _capture_requests(monkeypatch, _VLLM_RESPONSE)
+    await VLLMProvider("http://vllm").complete("m", _MESSAGES, 0.0, max_tokens=256, ignore_eos=True)
+    assert sent[0]["ignore_eos"] is True
+    assert sent[0]["max_tokens"] == 256
+
+
+@pytest.mark.asyncio
+async def test_vllm_omits_ignore_eos_by_default(monkeypatch):
+    sent = _capture_requests(monkeypatch, _VLLM_RESPONSE)
+    await VLLMProvider("http://vllm").complete("m", _MESSAGES, 0.0, max_tokens=256)
+    assert "ignore_eos" not in sent[0]
+
+
+@pytest.mark.asyncio
+async def test_vllm_stream_sends_ignore_eos(monkeypatch):
+    sent: list[dict] = []
+
+    def handler(request):
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, text=_SSE_BODY, headers={"content-type": "text/event-stream"})
+
+    def factory(*args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return _RealAsyncClient(*args, **kwargs)
+
+    monkeypatch.setattr(providers_module.httpx, "AsyncClient", factory)
+    chunks = [c async for c in VLLMProvider("http://vllm").stream("m", _MESSAGES, 0.0, 8, ignore_eos=True)]
+    assert sent[0]["ignore_eos"] is True
+    assert chunks[-1].done is True
+
+
+def _ignore_eos_request(client, api_key, **overrides):
+    body = {"model": "m", "messages": [{"role": "user", "content": "fixed length"}], "ignore_eos": True}
+    body.update(overrides)
+    return client.post("/v1/chat/completions", json=body, headers={"Authorization": f"Bearer {api_key}"})
+
+
+def test_gateway_forwards_ignore_eos_to_vllm(client, api_key, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "provider", "vllm")
+    monkeypatch.setattr(settings, "mock_mode", False)
+    sent = _capture_requests(monkeypatch, _VLLM_RESPONSE)
+
+    resp = _ignore_eos_request(client, api_key, max_tokens=16)
+    assert resp.status_code == 200
+    assert resp.headers["x-cache"] == "bypass"  # capped requests skip the cache (D2)
+    assert sent[0]["ignore_eos"] is True and sent[0]["max_tokens"] == 16
+
+
+def test_gateway_rejects_ignore_eos_without_max_tokens(client, api_key, monkeypatch):
+    monkeypatch.setattr(get_settings(), "provider", "vllm")
+    resp = _ignore_eos_request(client, api_key)
+    assert resp.status_code == 400
+    assert "requires max_tokens" in resp.json()["detail"]
+
+
+def test_gateway_rejects_ignore_eos_for_ollama(client, api_key, monkeypatch):
+    monkeypatch.setattr(get_settings(), "provider", "ollama")
+    resp = _ignore_eos_request(client, api_key, max_tokens=16)
+    assert resp.status_code == 400
+    assert "only supported by vLLM" in resp.json()["detail"]

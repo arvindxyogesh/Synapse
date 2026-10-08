@@ -30,6 +30,8 @@ export interface RequestLogEntry {
   completion_tokens: number;
   cost_usd: number;
   latency_ms: number;
+  // Time to first token; null for non-streamed requests.
+  ttft_ms: number | null;
   status: string;
   created_at: string;
 }

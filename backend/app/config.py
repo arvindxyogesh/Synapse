@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     vllm_base_url: str = "http://localhost:8001"
     vllm_api_key: str | None = None
     default_model: str = "llama3"
+    # Optional TOML file giving individual model names their own backend
+    # (see app/model_registry.py and models.example.toml). Unset = every
+    # model goes to PROVIDER, as above.
+    model_registry_path: str | None = None
     # Seconds to wait on the model backend before giving up (-> HTTP 502).
     # A long generation behind a deep queue can legitimately take longer than
     # the default; benchmarks at high concurrency should raise it rather than
@@ -83,7 +87,10 @@ class Settings(BaseSettings):
     # model running.
     mock_fallback: bool = False
 
-    model_config = SettingsConfigDict(env_file=".env")
+    # protected_namespaces: pydantic reserves the "model_" prefix for its own
+    # methods by default and warns about model_registry_path; nothing here
+    # clashes with those, so only reserve "settings_" instead.
+    model_config = SettingsConfigDict(env_file=".env", protected_namespaces=("settings_",))
 
 
 @lru_cache
