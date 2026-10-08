@@ -410,3 +410,44 @@ on sampling luck. A zero-shot prompt (no worked examples), which is simpler
 to explain, though it gives lower absolute scores than the few-shot setups
 published leaderboards often use. So these numbers compare *variants with
 each other*, not this model with published scores.
+
+---
+
+## D11. GPU memory: report what vLLM reserved, not just what `nvidia-smi` shows
+
+**Date:** 2026-10-08
+
+**The trap.** It's natural to expect "the 4-bit model uses less GPU memory"
+to show up in `nvidia-smi`. With vLLM it doesn't. At startup vLLM loads the
+weights, then claims a fixed fraction of the whole GPU
+(`--gpu-memory-utilization`, default 0.9) and fills everything beyond the
+weights with **KV cache**: the stored attention keys and values for every
+token of every request in flight. So `nvidia-smi` reads about 90% for every
+variant, before any traffic. Reporting that as "peak memory" would say
+16-bit and 4-bit cost the same memory, which is technically true and
+completely misleading.
+
+**What quantization actually changes.** Smaller weights leave more of that
+fixed budget for KV cache. More KV cache means more tokens of context can be
+held at once, so more requests can run concurrently before vLLM has to queue
+them. For a serving system that's the real memory benefit: capacity, not a
+smaller footprint.
+
+**What gets recorded.**
+1. From vLLM's startup log (`--vllm-log`, parsed by `synapse_bench/gpu.py`):
+   - weight memory (GiB);
+   - KV cache memory (GiB) and size (tokens);
+   - the maximum concurrency vLLM computed for our sequence length;
+   - which quantized kernel it chose.
+2. `nvidia-smi` peak per concurrency level (`--gpu-sample`, polled every
+   200 ms), for completeness. It's expected to be nearly flat, and will be
+   reported with the explanation above.
+
+All variants run with the **same** `--gpu-memory-utilization` and
+`--max-model-len`, so their KV-cache numbers are directly comparable.
+
+**Honest caveat.** vLLM's log wording has changed between versions. The
+parser handles the phrasings known when it was written, and returns `None`
+for anything it can't find; it never estimates. Before any memory number is
+published, milestone 4 checks the parser against the real server log from
+the GPU run.

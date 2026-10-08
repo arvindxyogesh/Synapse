@@ -21,6 +21,7 @@ published.
 
 import argparse
 import asyncio
+import contextlib
 import json
 import os
 import sys
@@ -28,6 +29,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from synapse_bench import metadata
+from synapse_bench.gpu import GpuMemorySampler, parse_vllm_log
 from synapse_bench.loadgen import INTEGRITY_ERRORS, LevelResult, Target, run_level
 from synapse_bench.metrics import summarize_level
 from synapse_bench.workloads import WORKLOAD_DIR, load_perf_prompts
@@ -52,6 +54,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--gpu-price-per-hour", type=float, help="USD/hour, for cost per 1K tokens")
     p.add_argument("--timeout", type=float, default=300.0, help="per-request timeout, seconds")
     p.add_argument("--prompts", type=Path, default=WORKLOAD_DIR / "perf_prompts.jsonl")
+    p.add_argument("--gpu-sample", action="store_true", help="record peak nvidia-smi memory per level")
+    p.add_argument("--vllm-log", type=Path, help="vLLM server log to parse for weight / KV-cache memory")
     p.add_argument("--out", type=Path, required=True, help="results directory (must not exist yet)")
     args = p.parse_args(argv)
     if args.direct_url and not args.direct_model:
@@ -109,6 +113,9 @@ async def run(args: argparse.Namespace, api_key: str) -> int:
     args.out.mkdir(parents=True, exist_ok=False)
     meta = metadata.collect(vars(args) | {"api_key": api_key}, args.prompts, args.gateway_url, api_key,
                             args.direct_url)
+    # Weight memory and KV-cache capacity, from the server's own startup log
+    # (see gpu.py for why nvidia-smi alone can't show these).
+    meta["vllm_log"] = parse_vllm_log(args.vllm_log.read_text()) if args.vllm_log else None
     (args.out / "metadata.json").write_text(json.dumps(meta, indent=2, default=str))
 
     rows, integrity_failures = [], 0
@@ -116,12 +123,15 @@ async def run(args: argparse.Namespace, api_key: str) -> int:
         for target_name, target in build_targets(args, api_key).items():
             for repeat in range(args.repeat):
                 for concurrency in args.levels:
-                    level = await run_level(target, prompts, concurrency, args.requests, args.max_tokens,
-                                            warmup_requests=args.warmup, timeout_s=args.timeout)
+                    sampler = GpuMemorySampler() if args.gpu_sample else None
+                    with sampler or contextlib.nullcontext():
+                        level = await run_level(target, prompts, concurrency, args.requests, args.max_tokens,
+                                                warmup_requests=args.warmup, timeout_s=args.timeout)
                     for r in level.records:
                         raw.write(json.dumps({"target": target_name, "repeat": repeat, "concurrency": concurrency,
                                               **asdict(r)}) + "\n")
                     row = summary_row(target_name, repeat, level, args.gpu_price_per_hour)
+                    row["gpu_memory"] = sampler.result() if sampler else None
                     rows.append(row)
                     print_row(row)
                     if row["client_cpu_fraction"] > CLIENT_CPU_WARNING:
