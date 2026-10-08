@@ -1,6 +1,5 @@
 """Run the quantization benchmark on one Modal L40S GPU.
 
-    modal run benchmarks/modal_gpu_session.py::check            # CPU only: verify vLLM version + flags
     modal run benchmarks/modal_gpu_session.py --mode smoke      # ~15 min on GPU: one variant, small runs
     modal run benchmarks/modal_gpu_session.py --mode full       # all variants, full runs
     modal volume get synapse-bench-results <run_id> benchmarks/results/<run_id>
@@ -207,26 +206,31 @@ def _serve_variant(name: str, out: Path, profile: dict, git_env: dict) -> dict:
     return status
 
 
-# -- Modal functions --------------------------------------------------------------
-
-
-@app.function(image=image, timeout=15 * 60)
-def check() -> dict:
-    """CPU only, costs cents: confirm the vLLM version and that every flag in
-    VLLM_ARGS exists in this version's `vllm serve` before paying for a GPU."""
+def _preflight() -> dict:
+    """Confirm the vLLM version and that every flag in VLLM_ARGS exists, before
+    any model is downloaded or loaded. Has to run on the GPU machine: vLLM
+    0.31.0 can't even build its argument parser on a CPU-only machine
+    ("Failed to infer device type"), so a cheaper CPU-side check isn't
+    possible."""
     import vllm
 
-    help_text = subprocess.run(["vllm", "serve", "--help=all"], capture_output=True, text=True).stdout
-    if "--max-model-len" not in help_text:  # older/newer CLIs that don't support --help=all
-        help_text = subprocess.run(["vllm", "serve", "--help"], capture_output=True, text=True).stdout
+    proc = subprocess.run(["vllm", "serve", "--help=all"], capture_output=True, text=True)
+    help_text = proc.stdout + proc.stderr
     flags = [a for a in VLLM_ARGS if a.startswith("--")]
-    return {"vllm_version": vllm.__version__, "missing_flags": [f for f in flags if f not in help_text],
-            "help_chars": len(help_text)}
+    result = {"vllm_version": vllm.__version__, "help_exit": proc.returncode,
+              "missing_flags": [f for f in flags if f not in help_text]}
+    if result["vllm_version"] != VLLM_VERSION or result["missing_flags"] or proc.returncode != 0:
+        raise RuntimeError(f"preflight failed, not using the GPU any further: {result}")
+    return result
+
+
+# -- Modal functions --------------------------------------------------------------
 
 
 @app.function(image=image, gpu=GPU, cpu=8.0, memory=32768, timeout=6 * 3600,
               volumes={HF_CACHE: hf_volume, RESULTS: results_volume})
 def run_session(mode: str, run_id: str, git_commit: str, git_dirty: bool) -> list[dict]:
+    preflight = _preflight()
     profile = RUN_PROFILES[mode]
     git_env = {"SYNAPSE_GIT_COMMIT": git_commit, "SYNAPSE_GIT_DIRTY": "true" if git_dirty else "false"}
     session_dir = Path(RESULTS) / run_id
@@ -234,7 +238,7 @@ def run_session(mode: str, run_id: str, git_commit: str, git_dirty: bool) -> lis
     (session_dir / "session.json").write_text(json.dumps({
         "mode": mode, "profile": profile, "gpu": GPU, "gpu_price_per_hour": GPU_PRICE_PER_HOUR,
         "vllm_version": VLLM_VERSION, "vllm_args": VLLM_ARGS, "variants": {v: VARIANTS[v] for v in profile["variants"]},
-        "git_commit": git_commit, "git_dirty": git_dirty,
+        "git_commit": git_commit, "git_dirty": git_dirty, "preflight": preflight,
         "nvidia_smi": subprocess.run(["nvidia-smi"], capture_output=True, text=True).stdout,
     }, indent=2))
     (session_dir / "pip-freeze.txt").write_text(
