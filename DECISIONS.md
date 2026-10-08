@@ -571,7 +571,15 @@ from these runs:
   2026-09-02 by earlier vLLM work), so they were left in place. The only
   side effect there is that `usage_stats.json`'s contents were overwritten.
 
-**Fix.** All of these variables are now set in `env.sh`. The runner also
+A third, found after the next run by searching home by *change* time
+(modification-time searches miss files that keep their original
+timestamps): **TileLang** (another vLLM dependency) creates `~/.tilelang`
+(`TILELANG_CACHE_DIR`).
+
+**Fix.** All of these variables are now set in `env.sh`, and every Great
+Lakes job ends by listing anything created or changed in home during the job,
+so the next one of these shows up in the job log instead of being found by
+hand. The runner also
 turns usage statistics off entirely (`VLLM_NO_USAGE_STATS=1`,
 `DO_NOT_TRACK=1`); sending telemetry from shared university machines isn't
 this project's call to make.
@@ -591,6 +599,12 @@ Turning it off was chosen. **Every request in this benchmark uses
 token directly and never runs top-k/top-p sampling. vLLM was only building
 the kernel during start-up warm-up. So the switch changes nothing measured;
 it's the same for every variant and recorded in `session.json`.
+
+**Cost per 1K tokens on Great Lakes** uses the job's actual billed rate.
+The first estimate ($0.47/h) wrongly *summed* the partition's per-resource
+billing weights. Slurm's own record for the smoke job (`billing=36157` per
+minute) showed it bills the *largest* term, here the 8 CPUs: **$0.217/h**.
+The account balance agreed ($0.24 for about 66 minutes of smoke jobs).
 
 **Cost of running on Great Lakes:** start-up is slow. Python imports
 thousands of small files from the cluster's network filesystem (GPFS) with

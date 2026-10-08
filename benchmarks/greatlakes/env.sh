@@ -18,3 +18,4 @@ export FLASHINFER_WORKSPACE_BASE=$B/cache/flashinfer-base   # FlashInfer kernel 
 export HUMMING_TMP_DIR=$B/cache/humming/tmp                 # humming-kernels (a vLLM dependency)
 export HUMMING_CACHE_DIR=$B/cache/humming/cache
 export VLLM_CONFIG_ROOT=$B/cache/vllm-config                # vLLM writes usage_stats.json here
+export TILELANG_CACHE_DIR=$B/cache/tilelang                    # TileLang (a vLLM dependency) kernel cache

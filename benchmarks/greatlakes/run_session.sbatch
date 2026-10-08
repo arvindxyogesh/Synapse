@@ -25,15 +25,22 @@ echo "job=$SLURM_JOB_ID node=$(hostname) mode=$MODE CUDA_VISIBLE_DEVICES=${CUDA_
 nvidia-smi -L
 GPU_NAME="$(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader | head -1)"
 
-# Great Lakes billed rate for THIS job shape (1 A40 + 8 cores + 64 GB), from
-# the spgpu partition's TRESBillingWeights (per minute; 10,000,000 units = $1):
-#   (18078.70 + 8 * 4519.68 + 64 * 376.64) * 60 / 1e7 = $0.470/hour.
-# Used only to turn throughput into cost per 1K tokens; checked against
-# Slurm's actual charge (sacct) after the smoke run.
-PRICE_PER_HOUR=0.470
+# Great Lakes billed rate for THIS job shape (1 A40 + 8 cores + 64 GB). The
+# spgpu partition's TRESBillingWeights are per minute (10,000,000 units = $1),
+# and Slurm bills the LARGEST of the per-resource terms, not their sum:
+#   max(gpu 1 * 18078.70, cpu 8 * 4519.68, mem 64 * 376.64) = 36157 per minute
+#   36157 * 60 / 1e7 = $0.217/hour.
+# Verified against Slurm's own record for smoke job 63555285 (sacct AllocTRES
+# billing=36157) and the account balance ($0.24 for ~66 min of smoke jobs).
+# Used only to turn throughput into cost per 1K tokens.
+PRICE_PER_HOUR=0.217
 
 # Other jobs can share this node (not this GPU), so pick ports unlikely to clash.
 PORT_OFFSET=$(( 20000 + SLURM_JOB_ID % 10000 ))
+
+# Marker for the home-directory check at the end of the job.
+START_MARKER="$B/tmp/job-start-$SLURM_JOB_ID"
+touch "$START_MARKER"
 
 # No --cuda-device: Slurm already restricts the job to its GPU, and overriding
 # CUDA_VISIBLE_DEVICES here could point at the wrong one.
@@ -46,4 +53,16 @@ PORT_OFFSET=$(( 20000 + SLURM_JOB_ID % 10000 ))
     --gpu-memory-utilization 0.90 \
     --vllm-bin "$B/envs/vllm/bin/vllm" \
     --redis-bin "$B/envs/vllm/bin/redis-server" \
-    --port-offset "$PORT_OFFSET"
+    --port-offset "$PORT_OFFSET" || STATUS=$?
+
+# Nothing from this job may end up in home (DECISIONS.md D14). List anything
+# created or changed there during the job, by change time (which also catches
+# files unpacked with old modification times).
+LEAKS="$(timeout 300 find "$HOME" -xdev -cnewer "$START_MARKER" ! -path "$HOME" 2>/dev/null | head -50 || true)"
+if [ -n "$LEAKS" ]; then
+    echo "WARNING: these home entries were created/changed during this job:"
+    echo "$LEAKS"
+else
+    echo "home check: nothing created or changed in $HOME during this job"
+fi
+exit "${STATUS:-0}"
