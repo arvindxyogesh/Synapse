@@ -27,6 +27,14 @@ def _run(cmd: list[str]) -> str | None:
 
 
 def git_info() -> dict:
+    # Remote runs (e.g. a Modal container) get a copy of the code without
+    # .git; the launcher passes the commit it shipped through these instead.
+    if os.environ.get("SYNAPSE_GIT_COMMIT"):
+        return {
+            "commit": os.environ["SYNAPSE_GIT_COMMIT"],
+            "dirty": os.environ.get("SYNAPSE_GIT_DIRTY") == "true",
+            "source": "launcher",
+        }
     status = _run(["git", "status", "--porcelain"])
     return {
         "commit": _run(["git", "rev-parse", "HEAD"]),
