@@ -134,6 +134,11 @@ def _stop(procs) -> None:
 def _vllm_env(cfg: SessionConfig) -> dict:
     env = dict(os.environ)
     if cfg.cuda_device is not None:
+        # CUDA's default numbering is "fastest first", which isn't guaranteed to
+        # match nvidia-smi's. PCI_BUS_ID order makes --cuda-device N the same
+        # physical GPU as nvidia-smi's index N -- on a shared machine, the
+        # difference is landing on someone else's GPU.
+        env["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         env["CUDA_VISIBLE_DEVICES"] = cfg.cuda_device
     return env
 
