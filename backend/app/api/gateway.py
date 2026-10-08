@@ -4,7 +4,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -90,11 +90,23 @@ def _backend_error(
     return HTTPException(status_code=502, detail=str(exc))
 
 
-def _should_use_cache(body: ChatCompletionRequest) -> bool:
-    """The cache is keyed on (model, prompt) only. A reply generated under a
-    max_tokens cap may be cut short, so caching it would hand a truncated
-    answer to a later request that asked for no cap -- requests that set
-    max_tokens skip the cache entirely (lookup and store)."""
+CACHE_BYPASS = "bypass"
+
+
+def _should_use_cache(body: ChatCompletionRequest, cache_header: str | None) -> bool:
+    """Whether this request may read from / write to the semantic cache.
+
+    - `x-synapse-cache: bypass` skips it explicitly (used by the benchmark
+      to measure the model rather than the cache). Any other value is
+      rejected, so a typo can't silently leave the cache on.
+    - The cache is keyed on (model, prompt) only. A reply generated under a
+      max_tokens cap may be cut short, so caching it would hand a truncated
+      answer to a later request that asked for no cap -- requests that set
+      max_tokens skip the cache too (see DECISIONS.md D2)."""
+    if cache_header is not None and cache_header.lower() != CACHE_BYPASS:
+        raise HTTPException(status_code=400, detail=f"x-synapse-cache must be '{CACHE_BYPASS}' if set")
+    if cache_header is not None:
+        return False
     return body.max_tokens is None
 
 
@@ -118,14 +130,15 @@ async def chat_completions(
     api_key: ApiKey = Depends(require_api_key),
     db: Session = Depends(get_db),
     limiter: RateLimiter = Depends(get_rate_limiter),
+    x_synapse_cache: str | None = Header(default=None),
 ):
+    use_cache = _should_use_cache(body, x_synapse_cache)
     _enforce_limits(api_key, limiter)
 
     start = time.perf_counter()
     messages = [m.model_dump() for m in body.messages]
     prompt = prompt_from_messages(messages)
     cache = get_cache()
-    use_cache = _should_use_cache(body)
     hit = None
     if use_cache:
         threshold = get_threshold_controller().get_threshold(body.model)

@@ -367,6 +367,12 @@ and set or clear their rate limit and quota.
 Exceeding a key's rate limit or quota returns `429` (rate limit responses
 carry a `Retry-After` header).
 
+To skip the semantic cache for one request (no lookup, no store), send
+`x-synapse-cache: bypass`. With the `openai` SDK, that's
+`extra_headers={"x-synapse-cache": "bypass"}`. The response carries
+`x-cache: bypass`. Requests that set `max_tokens` also skip the cache (see
+[DECISIONS.md](DECISIONS.md), D2).
+
 ## Tests
 
 ```bash

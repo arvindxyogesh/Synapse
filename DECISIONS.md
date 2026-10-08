@@ -87,3 +87,31 @@ follow-up.
 the cache key either, so a `temperature=0` request can be served a reply that
 was sampled at `temperature=0.7`. It's noted here so it isn't forgotten. The
 benchmark bypasses the cache for its performance runs, so it isn't affected.
+
+---
+
+## D3. Turning the cache off: a per-request header
+
+**Date:** 2026-10-08
+
+**Context.** The benchmark needs to measure *the model*, with the cache out
+of the way. The bonus experiment then needs cache on vs. off side by side.
+
+**Options.**
+1. A global setting (`CACHE_ENABLED=false`). That needs a gateway restart to
+   flip, and it's easy to forget it's off in a demo afterwards.
+2. A field in the request body. That isn't part of the OpenAI request shape,
+   and some SDKs reject or strip unknown fields.
+3. A request header, `x-synapse-cache: bypass`.
+
+**Decision.** Option 3. Every OpenAI SDK lets you add headers
+(`extra_headers=...`), so it doesn't touch the request format, and it
+applies to one request at a time, so cache-on and cache-off traffic can run
+against the same gateway. A bypassed request skips the lookup, the store
+*and* the embedding computation, so cache-off timings don't include work
+whose result would be thrown away. The response says `x-cache: bypass`, which
+lets the benchmark check every request really skipped the cache rather than
+trusting that it did.
+
+**Small guard.** Any value other than `bypass` gets a 400. A typo like
+`bypas` would otherwise silently leave the cache *on* and contaminate a run.
