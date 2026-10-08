@@ -352,3 +352,61 @@ exact numbers), the same ones the gateway already logs.
 vLLM reports exact counts. When a backend doesn't, the gateway falls back to
 a rough characters ÷ 4 estimate (`providers._estimate_tokens`). The benchmark
 targets vLLM, so its tokens/s numbers use exact counts.
+
+---
+
+## D10. How quality is measured: GSM8K, two scorings, and a paired test
+
+**Date:** 2026-10-08
+
+**Why measure quality at all.** Quantization shrinks the weights by
+rounding them. The question is whether that rounding costs accuracy, and a
+faster model that's wrong more often isn't a win by default. Speed numbers
+without a quality number next to them can't support a recommendation.
+
+**Why GSM8K.** These are 1,319 grade-school math word problems with one
+numeric answer each.
+- *Exact-match scoring.* The answer is a number, so grading is a string
+  comparison after normalization. No judge model or human rater is needed,
+  and anyone can rerun it and get the same score.
+- *Sensitive to small errors.* Multi-step arithmetic fails if any step goes
+  wrong, so it's a place where quantization damage should show if it exists.
+- *Small enough to run in full.* All 1,319 problems take minutes on one GPU,
+  so there's no question of which sample was chosen.
+- *Known limitation.* It's one task type. A model that holds up on GSM8K
+  could still degrade on, say, long-document summarization. The README will
+  say "accuracy on GSM8K", not "quality".
+
+**Two scorings, both reported.** *Strict* takes the number after the model's
+final `####`, the format the prompt asks for. *Flexible* takes the last
+number anywhere in the reply. If quantization made the model worse at
+following the format but not at math, strict drops while flexible doesn't.
+That distinction is worth seeing rather than averaging away.
+
+**Conservative rules.**
+- A question whose request failed (HTTP error, timeout) counts as **wrong**,
+  not skipped. Dropping failures would raise the accuracy of a variant that
+  fails more often.
+- Synapse's non-streaming responses always say `finish_reason: "stop"`, even
+  when the reply hit `max_tokens`. So replies that used exactly `max_tokens`
+  are flagged as *possibly truncated* and counted in the summary.
+  (`max_tokens=512` is generous for GSM8K. If many replies hit it, the cap
+  needs raising, not the numbers explaining away.)
+- Any answer that came from the mock provider or the cache invalidates the
+  run (exit code 2).
+
+**Confidence intervals and the paired test.** With 1,319 questions, a 95%
+interval on an accuracy around 85% is roughly ±2 points (Wilson interval).
+So two variants scoring 85.1% and 84.3% may well be indistinguishable.
+Because both variants answer the *same* questions, the right test only looks
+at the questions where they *disagree*. If they were equally good, those
+disagreements would split about 50/50, and McNemar's exact test asks how
+surprising the observed split is. A large p-value means "no detectable
+difference at this sample size". That isn't proof they're equal, and the
+README will word it that way.
+
+**Settings.** Greedy decoding (`temperature=0`), so the result doesn't depend
+on sampling luck. A zero-shot prompt (no worked examples), which is simpler
+to explain, though it gives lower absolute scores than the few-shot setups
+published leaderboards often use. So these numbers compare *variants with
+each other*, not this model with published scores.
