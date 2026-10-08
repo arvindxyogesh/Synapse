@@ -42,6 +42,7 @@ services:
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://vllm:8000}
       VLLM_API_KEY: ${VLLM_API_KEY:-}
       DEFAULT_MODEL: ${DEFAULT_MODEL:-llama3}
+      BACKEND_TIMEOUT_SECONDS: ${BACKEND_TIMEOUT_SECONDS:-60}
       ADMIN_KEY: ${ADMIN_KEY:-change-me-admin-key}
       MOCK_MODE: ${MOCK_MODE:-false}
       # On here (off in the app itself) so `docker compose up` demos with no

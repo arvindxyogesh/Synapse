@@ -42,6 +42,10 @@ class BaseProvider(ABC):
         chunk has done=True and carries the token counts."""
 
 
+def _timeout() -> float:
+    return get_settings().backend_timeout_seconds
+
+
 def _estimate_tokens(text: str) -> int:
     # Rough, provider-agnostic estimate (~4 chars/token) used when a backend
     # doesn't report exact counts. Good enough for cost/latency dashboards.
@@ -69,7 +73,7 @@ class OllamaProvider(BaseProvider):
     ) -> tuple[str, int, int]:
         options = _ollama_options(temperature, max_tokens)
         payload = {"model": model, "messages": messages, "stream": False, "options": options}
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=_timeout()) as client:
             resp = await client.post(f"{self.base_url}/api/chat", json=payload)
             resp.raise_for_status()
             data = resp.json()
@@ -85,7 +89,7 @@ class OllamaProvider(BaseProvider):
         payload = {"model": model, "messages": messages, "stream": True, "options": options}
         prompt_fallback = _estimate_tokens(" ".join(m["content"] for m in messages))
         text_so_far = ""
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=_timeout()) as client:
             async with client.stream("POST", f"{self.base_url}/api/chat", json=payload) as resp:
                 resp.raise_for_status()
                 async for line in resp.aiter_lines():
@@ -127,7 +131,7 @@ class VLLMProvider(BaseProvider):
         payload = {"model": model, "messages": messages, "stream": False, "temperature": temperature}
         if max_tokens is not None:
             payload["max_tokens"] = max_tokens
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=_timeout()) as client:
             resp = await client.post(
                 f"{self.base_url}/v1/chat/completions", json=payload, headers=self._headers()
             )
@@ -157,7 +161,7 @@ class VLLMProvider(BaseProvider):
             payload["max_tokens"] = max_tokens
         prompt_fallback = _estimate_tokens(" ".join(m["content"] for m in messages))
         text_so_far = ""
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=_timeout()) as client:
             async with client.stream(
                 "POST", f"{self.base_url}/v1/chat/completions", json=payload, headers=self._headers()
             ) as resp:

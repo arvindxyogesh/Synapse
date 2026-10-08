@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     vllm_base_url: str = "http://localhost:8001"
     vllm_api_key: str | None = None
     default_model: str = "llama3"
+    # Seconds to wait on the model backend before giving up (-> HTTP 502).
+    # A long generation behind a deep queue can legitimately take longer than
+    # the default; benchmarks at high concurrency should raise it rather than
+    # record timeouts as errors.
+    backend_timeout_seconds: float = 60.0
 
     # Master key used to create/revoke gateway API keys via /v1/admin/*.
     # Individual gateway API keys (created through that endpoint) are what

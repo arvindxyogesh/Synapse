@@ -152,3 +152,45 @@ suite against a real Postgres 16 service container. It also runs
 
 **Also changed.** Timeseries latency now averages successful responses only,
 the same as `/summary` (D1).
+
+---
+
+## D5. Keep one HTTP client per request for now; make the backend timeout configurable
+
+**Date:** 2026-10-08
+
+**Context.** `app/providers.py` creates a new `httpx.AsyncClient` for every
+call to the model backend. The usual advice is to reuse one client, so open
+connections get reused (connection pooling) instead of reconnecting every
+time. The plan included making that switch.
+
+**What I measured first.** `benchmarks/micro/httpx_client_reuse.py` sends
+400 requests to an instant-response stub server at concurrency 1, 16 and 64,
+with a new client per request vs. one shared client. Six runs on a MacBook,
+raw output in `benchmarks/micro/results_2026-10-08_macbook.txt`:
+- At concurrency 1 and 16 the results were consistent: the shared client is
+  faster by under 1 ms and by about 25 ms (p50) respectively.
+- At concurrency 64 the results **didn't reproduce**. The same settings gave
+  a shared-client p50 of about 183–207 ms in three runs and about 41–44 ms in
+  two others.
+
+The likely cause is that the client, the server and 64 concurrent requests
+all shared one laptop CPU, so the test mostly measured Python's own
+scheduling, not connection reuse.
+
+**Decision.** Don't change the client on the strength of an unreliable
+measurement. The real benchmark (milestone 3) sends the same traffic both
+*through the gateway* and *directly to vLLM* on the GPU machine, and the
+difference between the two is the gateway's total overhead. If that overhead
+turns out to matter, connection reuse is one of the first things to try,
+measured the same way.
+
+**What did change.** The backend timeout was hard-coded to 60 s and is now
+`BACKEND_TIMEOUT_SECONDS` (still 60 by default). At high concurrency a long
+generation can sit in vLLM's queue past 60 s, and the benchmark should be
+able to raise the timeout rather than record those requests as errors.
+
+**Lesson carried into the benchmark design.** At high concurrency, *the load
+generator itself* can be the bottleneck. The milestone 3 harness will record
+its own CPU usage, and will run on a machine with enough cores to keep up, so
+a slow client isn't reported as a slow server.

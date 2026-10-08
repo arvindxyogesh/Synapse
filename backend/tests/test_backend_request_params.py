@@ -1,6 +1,9 @@
-"""max_tokens must reach the backend in each backend's own wire format --
-without it, output length is uncontrolled and tokens/s comparisons between
-models are meaningless."""
+"""Request parameters that must actually reach the model backend.
+
+max_tokens must arrive in each backend's own wire format -- without it,
+output length is uncontrolled and tokens/s comparisons between models are
+meaningless. The backend timeout must be configurable, so long generations
+in a deep queue aren't recorded as errors."""
 
 import json
 
@@ -108,3 +111,18 @@ def test_requests_with_max_tokens_skip_the_cache(client, api_key, stream):
     # ...and now that a full reply *is* cached, a capped request still skips it.
     third = client.post("/v1/chat/completions", json=capped, headers=headers)
     assert third.headers["x-cache"] == "bypass"
+
+
+@pytest.mark.asyncio
+async def test_backend_timeout_is_configurable(monkeypatch):
+    monkeypatch.setattr(get_settings(), "backend_timeout_seconds", 300.0)
+    seen_timeouts = []
+
+    def factory(*args, **kwargs):
+        seen_timeouts.append(kwargs["timeout"])
+        kwargs["transport"] = httpx.MockTransport(lambda request: httpx.Response(200, json=_VLLM_RESPONSE))
+        return _RealAsyncClient(*args, **kwargs)
+
+    monkeypatch.setattr(providers_module.httpx, "AsyncClient", factory)
+    await VLLMProvider("http://vllm").complete("m", _MESSAGES, 0.0)
+    assert seen_timeouts == [300.0]
