@@ -7,6 +7,7 @@ from synapse_bench.gsm8k import (
     build_prompt,
     extract_flexible,
     extract_strict,
+    last_boxed,
     normalize_number,
     reference_answer,
     score,
@@ -44,17 +45,24 @@ def test_reference_answer_from_gsm8k_field():
 @pytest.mark.parametrize(
     "response, strict, flexible",
     [
-        ("3 + 4 = 7\n#### 7", "7", "7"),
-        ("The answer is $1,250.\n#### $1,250", "1250", "1250"),
-        # No #### -> strict fails, flexible takes the last number.
+        ("3 + 4 = 7\nThe answer is \\(\\boxed{7}\\).", "7", "7"),
+        ("She pays \\boxed{\\$1,250}.", "1250", "1250"),
+        # No box -> strict fails, flexible takes the last number.
         ("So she pays 18 dollars in total.", None, "18"),
-        ("\\boxed{42}", None, "42"),
-        # Only the LAST #### counts (models sometimes restate the format).
-        ("Format: #### <number>. First try #### 5, corrected: #### 6", "6", "6"),
+        ("#### 42", None, "42"),
+        # Units / LaTeX inside the box: the first number in it.
+        ("\\boxed{180 \\text{ meters}}", "180", "180"),
+        # Fractions are evaluated.
+        ("\\boxed{\\frac{3}{2}}", "1.5", "2"),
+        ("\\boxed{-\\dfrac{1}{4}}", "-0.25", "4"),  # sign in front of the fraction is kept
+        ("\\boxed{\\frac{-3}{4}}", "-0.75", "4"),
+        # Only the LAST box counts.
+        ("First guess \\boxed{5}, corrected: \\boxed{6}", "6", "6"),
         # Text after the final answer doesn't change strict.
-        ("#### 12\nHope this helps! Step 3 was hard.", "12", "3"),
-        ("#### (no number)", None, None),
-        ("-5 degrees\n#### -5", "-5", "-5"),
+        ("\\boxed{12}\nHope this helps! Step 3 was hard.", "12", "3"),
+        # A box cut off mid-way (reply hit max_tokens).
+        ("so the answer is \\boxed{1", None, "1"),
+        ("\\boxed{}", None, None),
         ("", None, None),
     ],
 )
@@ -63,8 +71,13 @@ def test_extraction(response, strict, flexible):
     assert extract_flexible(response) == flexible
 
 
+def test_last_boxed_balances_nested_braces():
+    assert last_boxed("x \\boxed{\\frac{1}{2}} y") == "\\frac{1}{2}"
+    assert last_boxed("no box") is None
+
+
 def test_score_marks_correctness_both_ways():
-    result = score("Total is 18.\n#### 18.00", "...\n#### 18")
+    result = score("Total is 18.\n\\boxed{18.00}", "...\n#### 18")
     assert result == {"gold": "18", "pred_strict": "18", "pred_flexible": "18",
                       "correct_strict": True, "correct_flexible": True}
     result = score("I think it's 18", "...\n#### 18")
@@ -80,4 +93,4 @@ def test_every_reference_answer_in_the_dataset_parses():
 
 def test_prompt_asks_for_the_scored_format():
     prompt = build_prompt("What is 2+2?")
-    assert "What is 2+2?" in prompt and '"#### <number>"' in prompt
+    assert prompt.startswith("What is 2+2?") and "\\boxed{}" in prompt

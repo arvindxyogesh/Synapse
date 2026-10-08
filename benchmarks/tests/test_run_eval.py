@@ -32,7 +32,7 @@ class FakeGateway:
         if i in self.fail:
             return httpx.Response(502, json={"detail": "down"})
         gold = GOLD_BY_PROMPT[prompt]
-        text = f"Reasoning...\n#### {gold}" if i in self.correct else "Reasoning...\n#### 999999"
+        text = f"Reasoning...\n\\boxed{{{gold}}}" if i in self.correct else "Reasoning...\n\\boxed{999999}"
         return httpx.Response(200, json={
             "choices": [{"message": {"role": "assistant", "content": text}}],
             "usage": {"prompt_tokens": 50, "completion_tokens": self.tokens},

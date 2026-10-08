@@ -499,3 +499,43 @@ remembers earlier requests. This setup has three such layers: Synapse's
 semantic cache (bypassed with a header), the backend's prompt cache (now
 disabled and checked), and warm-up (handled with discarded warm-up
 requests).
+
+---
+
+## D13. GSM8K answer format: `\boxed{}` instead of `####` (follow-up to D10)
+
+**Date:** 2026-10-08
+
+**What the dry run showed.** With D10's prompt ("give the final answer as
+`#### <number>`"), `qwen2.5:0.5b` scored 2% strict vs. 38% flexible on 50
+questions (Mac dry run, not published). Reading the replies explained the
+gap: only 4 of 50 contained `####`. The rest ended with `\boxed{18}`. Qwen
+models are trained to put math answers in a LaTeX box, and the small model
+followed that habit over the instruction. The extractor was right; the
+*metric* was measuring how well the model overrode its training, which
+isn't what this benchmark compares.
+
+**Decision.** Use the instruction Qwen documents for its own math
+evaluations ("Please reason step by step, and put your final answer within
+`\boxed{}`.") and make *strict* scoring read the last `\boxed{...}`.
+Flexible stays "last number in the reply". After the change, 45 of 50
+replies used the box, and strict and flexible agreed on every question.
+
+**Why this isn't tuning the eval to look good.**
+- It was decided *before* any run of the model being benchmarked, from a
+  different (much smaller) model's behavior.
+- The same prompt and the same scorer apply identically to every quantized
+  variant. The benchmark compares variants with each other, so the prompt
+  can't favor one of them.
+- It uses the model family's documented answer format, the same reasoning
+  as using the right chat template.
+
+**Bug found while doing this.** `\boxed{-\dfrac{1}{4}}` was scored as
+`0.25`: the minus sign in front of the fraction was dropped, so a negative
+answer would have been graded against the wrong value. Fixed and tested
+(`-0.25`, and `\frac{-3}{4}` gives `-0.75`).
+
+**Still to watch.** 4 of the 50 small-model replies hit the 512-token cap
+(`possibly_truncated`). The 7B model is expected to be more concise. If more
+than a handful of its replies hit the cap in milestone 4, the cap gets
+raised before results are reported.

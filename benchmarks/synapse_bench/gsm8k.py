@@ -1,12 +1,14 @@
 """GSM8K: prompt, answer extraction and exact-match scoring.
 
-GSM8K reference answers end with "#### <number>". The model is asked to end
-its reply the same way, then scored two ways:
+GSM8K reference answers end with "#### <number>". The model is asked to put
+its final answer in \\boxed{...} -- the format Qwen models are trained to use
+for math and the one Qwen's own math evaluations ask for (see DECISIONS.md
+D13 for why this replaced "####") -- then scored two ways:
 
-- strict: the number after the model's last "####". Measures "solved it AND
-  followed the requested format".
+- strict: the number inside the model's last \\boxed{...}. Measures "solved
+  it AND followed the requested format".
 - flexible: the last number anywhere in the reply. Forgives a model that
-  solved the problem but wrote "The answer is 18." or "\\boxed{18}".
+  solved the problem but wrote "The answer is 18." with no box.
 
 Both are reported. The gap between them is itself informative: if
 quantization hurt format-following more than math, strict drops but
@@ -18,11 +20,7 @@ question is whether the value is right, not how it was typed.
 import re
 from decimal import Decimal, InvalidOperation
 
-PROMPT_TEMPLATE = (
-    "Solve the following math problem. Think step by step, then give the final answer "
-    'on its own line in the form "#### <number>".\n\n'
-    "Problem: {question}"
-)
+PROMPT_TEMPLATE = "{question}\nPlease reason step by step, and put your final answer within \\boxed{{}}."
 
 # A number as people write them: optional minus, digits with optional
 # thousands commas, optional decimals. Also matches ".5".
@@ -62,11 +60,42 @@ def reference_answer(answer_field: str) -> str:
     return gold
 
 
-def extract_strict(response: str) -> str | None:
-    """First number after the model's last '####', or None."""
-    if "####" not in response:
+# \frac{a}{b} (or \dfrac / \tfrac), with an optional minus sign in front of
+# the fraction or inside the numerator.
+_FRACTION = re.compile(r"(-?)\s*\\[dt]?frac\{(-?\d+)\}\{(\d+)\}")
+
+
+def last_boxed(response: str) -> str | None:
+    """Contents of the last \\boxed{...}, braces balanced (so
+    \\boxed{\\frac{1}{2}} gives "\\frac{1}{2}"), or None."""
+    start = response.rfind("\\boxed{")
+    if start == -1:
         return None
-    numbers = _numbers(response.rsplit("####", 1)[-1])
+    i = start + len("\\boxed{")
+    depth = 1
+    for j in range(i, len(response)):
+        if response[j] == "{":
+            depth += 1
+        elif response[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return response[i:j]
+    return None  # unclosed box, e.g. the reply was cut off
+
+
+def extract_strict(response: str) -> str | None:
+    """The number inside the last \\boxed{...}, or None. Handles \\frac{a}{b}
+    and trailing units/LaTeX like "18 \\text{ meters}" (first number wins)."""
+    content = last_boxed(response)
+    if content is None:
+        return None
+    fraction = _FRACTION.search(content)
+    if fraction:
+        value = Decimal(fraction.group(2)) / Decimal(fraction.group(3))
+        if fraction.group(1):
+            value = -value
+        return normalize_number(str(value))
+    numbers = _numbers(content)
     return normalize_number(numbers[0]) if numbers else None
 
 
