@@ -321,3 +321,221 @@ answer-extraction step. Output text after the EOS point is meaningless filler,
 which is fine for measuring speed and wrong for measuring correctness.
 
 **Cost.** One non-standard request field, documented in the README.
+
+---
+
+## D9. Streamed responses report token usage (OpenAI's `stream_options.include_usage`)
+
+**Date:** 2026-10-08
+
+**Context.** The benchmark measures output tokens per second, so it needs to
+know how many tokens each streamed reply contained. Non-streamed responses
+carry a `usage` object. Streamed ones from Synapse didn't. Counting the text
+chunks isn't a substitute: a chunk can hold several tokens, or part of one.
+
+**Options.**
+1. Re-tokenize the received text on the client with the model's tokenizer.
+   That adds a heavy dependency, needs the right tokenizer per model, and
+   still isn't guaranteed to match what the server actually generated.
+2. Always append a usage chunk to every stream. That could surprise clients
+   that assume every chunk has at least one `choices` entry.
+3. Follow the OpenAI spec: when a request sets
+   `stream_options: {"include_usage": true}`, send one extra chunk at the
+   end with empty `choices` and a `usage` object.
+
+**Decision.** Option 3. It's what the real `openai` SDK already
+understands, and it's tested with it. Clients that don't ask get exactly the
+stream they got before. The counts come from the backend itself (vLLM's
+exact numbers), the same ones the gateway already logs.
+
+**Note for interviews.** The token counts are only as exact as the backend's.
+vLLM reports exact counts. When a backend doesn't, the gateway falls back to
+a rough characters ÷ 4 estimate (`providers._estimate_tokens`). The benchmark
+targets vLLM, so its tokens/s numbers use exact counts.
+
+---
+
+## D10. How quality is measured: GSM8K, two scorings, and a paired test
+
+**Date:** 2026-10-08
+
+**Why measure quality at all.** Quantization shrinks the weights by
+rounding them. The question is whether that rounding costs accuracy, and a
+faster model that's wrong more often isn't a win by default. Speed numbers
+without a quality number next to them can't support a recommendation.
+
+**Why GSM8K.** These are 1,319 grade-school math word problems with one
+numeric answer each.
+- *Exact-match scoring.* The answer is a number, so grading is a string
+  comparison after normalization. No judge model or human rater is needed,
+  and anyone can rerun it and get the same score.
+- *Sensitive to small errors.* Multi-step arithmetic fails if any step goes
+  wrong, so it's a place where quantization damage should show if it exists.
+- *Small enough to run in full.* All 1,319 problems take minutes on one GPU,
+  so there's no question of which sample was chosen.
+- *Known limitation.* It's one task type. A model that holds up on GSM8K
+  could still degrade on, say, long-document summarization. The README will
+  say "accuracy on GSM8K", not "quality".
+
+**Two scorings, both reported.** *Strict* takes the number after the model's
+final `####`, the format the prompt asks for. *Flexible* takes the last
+number anywhere in the reply. If quantization made the model worse at
+following the format but not at math, strict drops while flexible doesn't.
+That distinction is worth seeing rather than averaging away.
+
+**Conservative rules.**
+- A question whose request failed (HTTP error, timeout) counts as **wrong**,
+  not skipped. Dropping failures would raise the accuracy of a variant that
+  fails more often.
+- Synapse's non-streaming responses always say `finish_reason: "stop"`, even
+  when the reply hit `max_tokens`. So replies that used exactly `max_tokens`
+  are flagged as *possibly truncated* and counted in the summary.
+  (`max_tokens=512` is generous for GSM8K. If many replies hit it, the cap
+  needs raising, not the numbers explaining away.)
+- Any answer that came from the mock provider or the cache invalidates the
+  run (exit code 2).
+
+**Confidence intervals and the paired test.** With 1,319 questions, a 95%
+interval on an accuracy around 85% is roughly ±2 points (Wilson interval).
+So two variants scoring 85.1% and 84.3% may well be indistinguishable.
+Because both variants answer the *same* questions, the right test only looks
+at the questions where they *disagree*. If they were equally good, those
+disagreements would split about 50/50, and McNemar's exact test asks how
+surprising the observed split is. A large p-value means "no detectable
+difference at this sample size". That isn't proof they're equal, and the
+README will word it that way.
+
+**Settings.** Greedy decoding (`temperature=0`), so the result doesn't depend
+on sampling luck. A zero-shot prompt (no worked examples), which is simpler
+to explain, though it gives lower absolute scores than the few-shot setups
+published leaderboards often use. So these numbers compare *variants with
+each other*, not this model with published scores.
+
+---
+
+## D11. GPU memory: report what vLLM reserved, not just what `nvidia-smi` shows
+
+**Date:** 2026-10-08
+
+**The trap.** It's natural to expect "the 4-bit model uses less GPU memory"
+to show up in `nvidia-smi`. With vLLM it doesn't. At startup vLLM loads the
+weights, then claims a fixed fraction of the whole GPU
+(`--gpu-memory-utilization`, default 0.9) and fills everything beyond the
+weights with **KV cache**: the stored attention keys and values for every
+token of every request in flight. So `nvidia-smi` reads about 90% for every
+variant, before any traffic. Reporting that as "peak memory" would say
+16-bit and 4-bit cost the same memory, which is technically true and
+completely misleading.
+
+**What quantization actually changes.** Smaller weights leave more of that
+fixed budget for KV cache. More KV cache means more tokens of context can be
+held at once, so more requests can run concurrently before vLLM has to queue
+them. For a serving system that's the real memory benefit: capacity, not a
+smaller footprint.
+
+**What gets recorded.**
+1. From vLLM's startup log (`--vllm-log`, parsed by `synapse_bench/gpu.py`):
+   - weight memory (GiB);
+   - KV cache memory (GiB) and size (tokens);
+   - the maximum concurrency vLLM computed for our sequence length;
+   - which quantized kernel it chose.
+2. `nvidia-smi` peak per concurrency level (`--gpu-sample`, polled every
+   200 ms), for completeness. It's expected to be nearly flat, and will be
+   reported with the explanation above.
+
+All variants run with the **same** `--gpu-memory-utilization` and
+`--max-model-len`, so their KV-cache numbers are directly comparable.
+
+**Honest caveat.** vLLM's log wording has changed between versions. The
+parser handles the phrasings known when it was written, and returns `None`
+for anything it can't find; it never estimates. Before any memory number is
+published, milestone 4 checks the parser against the real server log from
+the GPU run.
+
+---
+
+## D12. The dry run found a measurement trap: the backend's own prompt cache
+
+**Date:** 2026-10-08
+
+**What happened.** Before renting a GPU, the whole harness was run on a
+MacBook against Ollama with `qwen2.5:0.5b`. Those numbers are throwaway and
+aren't published; the point was to find bugs. The gateway-vs-direct
+comparison at concurrency 1 showed the gateway's TTFT p95 about 10x higher
+than direct. Taken at face value, that's a damning "gateway overhead" result.
+
+**It was wrong.** The slow gateway requests were exactly the four longest
+prompts (1,137–3,416 characters). The direct run happened *second*, and
+Ollama keeps recently processed prompts in a cache, so the direct run got
+those long prompts pre-processed. Swapping the order flipped the result:
+cold direct was 107–259 ms on those prompts, and the gateway running second
+was 20–23 ms. The gap was run order, not the gateway.
+
+**Why it matters for the real run.** vLLM has the same mechanism
+(*automatic prefix caching*): if a new request starts with the same tokens
+as an earlier one, vLLM reuses the stored KV cache instead of recomputing
+it. It's a real production optimization, but in a benchmark that sends the
+same prompts at every concurrency level, to every target, it makes whatever
+runs later look faster.
+
+**Fix.**
+1. *Prevent:* the GPU run starts vLLM with `--no-enable-prefix-caching`, so
+   every request pays its full prompt cost and order can't matter.
+2. *Detect:* the harness records the backend's own count of cached prompt
+   tokens (`usage.prompt_tokens_details.cached_tokens`) whenever it's
+   reported. It sums them per level and prints a warning if any are non-zero.
+   This was checked against Ollama, where the warning fired (3,104 cached
+   tokens). vLLM only reports this field when started with
+   `--enable-prompt-tokens-details`, so the GPU run uses that flag too, to
+   *prove* the cache was off rather than assume it.
+
+**Limitation.** The gateway doesn't pass `prompt_tokens_details` through, so
+only the direct target reports it. Both targets hit the same vLLM server,
+though, so a direct run showing 0 cached tokens confirms the server's cache
+was off for both.
+
+**The broader lesson.** A comparison can be confounded by anything that
+remembers earlier requests. This setup has three such layers: Synapse's
+semantic cache (bypassed with a header), the backend's prompt cache (now
+disabled and checked), and warm-up (handled with discarded warm-up
+requests).
+
+---
+
+## D13. GSM8K answer format: `\boxed{}` instead of `####` (follow-up to D10)
+
+**Date:** 2026-10-08
+
+**What the dry run showed.** With D10's prompt ("give the final answer as
+`#### <number>`"), `qwen2.5:0.5b` scored 2% strict vs. 38% flexible on 50
+questions (Mac dry run, not published). Reading the replies explained the
+gap: only 4 of 50 contained `####`. The rest ended with `\boxed{18}`. Qwen
+models are trained to put math answers in a LaTeX box, and the small model
+followed that habit over the instruction. The extractor was right; the
+*metric* was measuring how well the model overrode its training, which
+isn't what this benchmark compares.
+
+**Decision.** Use the instruction Qwen documents for its own math
+evaluations ("Please reason step by step, and put your final answer within
+`\boxed{}`.") and make *strict* scoring read the last `\boxed{...}`.
+Flexible stays "last number in the reply". After the change, 45 of 50
+replies used the box, and strict and flexible agreed on every question.
+
+**Why this isn't tuning the eval to look good.**
+- It was decided *before* any run of the model being benchmarked, from a
+  different (much smaller) model's behavior.
+- The same prompt and the same scorer apply identically to every quantized
+  variant. The benchmark compares variants with each other, so the prompt
+  can't favor one of them.
+- It uses the model family's documented answer format, the same reasoning
+  as using the right chat template.
+
+**Bug found while doing this.** `\boxed{-\dfrac{1}{4}}` was scored as
+`0.25`: the minus sign in front of the fraction was dropped, so a negative
+answer would have been graded against the wrong value. Fixed and tested
+(`-0.25`, and `\frac{-3}{4}` gives `-0.75`).
+
+**Still to watch.** 4 of the 50 small-model replies hit the 512-token cap
+(`possibly_truncated`). The 7B model is expected to be more concise. If more
+than a handful of its replies hit the cap in milestone 4, the cap gets
+raised before results are reported.

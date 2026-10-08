@@ -8,6 +8,12 @@ class ChatMessage(BaseModel):
     content: str
 
 
+class StreamOptions(BaseModel):
+    # OpenAI's flag for "send token usage at the end of a stream": one extra
+    # chunk with empty `choices` and a `usage` object, just before [DONE].
+    include_usage: bool = False
+
+
 class ChatCompletionRequest(BaseModel):
     model: str = Field(default="llama3", description="Open-weight model name, e.g. llama3, mistral")
     messages: list[ChatMessage]
@@ -21,6 +27,7 @@ class ChatCompletionRequest(BaseModel):
         ),
     )
     stream: bool = False
+    stream_options: StreamOptions | None = None
 
 
 class ChatCompletionChoice(BaseModel):

@@ -438,6 +438,8 @@ backend/
   scripts/
     benchmark.py       cache precision/recall/F1 vs a live gateway, with
                         --rounds to show the adaptive threshold converging
+benchmarks/            quantization benchmark harness (speed + GSM8K quality),
+                        see benchmarks/README.md
 frontend/
   src/
     pages/             Dashboard (incl. adaptive threshold panel),
