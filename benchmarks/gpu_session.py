@@ -131,8 +131,29 @@ def _stop(procs) -> None:
                 proc.kill()
 
 
+def pip_cuda_home(vllm_bin: str) -> Path | None:
+    """The CUDA toolkit that pip installed into vLLM's environment (CUDA 13
+    wheels put nvcc + headers under site-packages/nvidia/cu13), if any."""
+    if "/" not in vllm_bin:
+        return None
+    env_root = Path(vllm_bin).resolve().parent.parent
+    for candidate in sorted(env_root.glob("lib/python3*/site-packages/nvidia/cu1[0-9]")):
+        if (candidate / "bin" / "nvcc").exists():
+            return candidate
+    return None
+
+
 def _vllm_env(cfg: SessionConfig) -> dict:
     env = dict(os.environ)
+    # FlashInfer compiles a sampling kernel on first start and needs nvcc.
+    # Use the system CUDA if there is one; otherwise (e.g. Great Lakes compute
+    # nodes have no /usr/local/cuda, and its newest module is CUDA 12.6 while
+    # vLLM 0.31.0 is built for CUDA 13) use the matching toolkit pip installed.
+    if not env.get("CUDA_HOME") and not Path("/usr/local/cuda/bin/nvcc").exists():
+        cuda_home = pip_cuda_home(cfg.vllm_bin)
+        if cuda_home is not None:
+            env["CUDA_HOME"] = str(cuda_home)
+            env["PATH"] = f"{cuda_home / 'bin'}{os.pathsep}{env.get('PATH', '')}"
     if "/" in cfg.vllm_bin:
         # Same effect as activating vLLM's environment: its bin/ goes first on
         # PATH. Needed because FlashInfer compiles a sampling kernel on first
@@ -277,6 +298,7 @@ def run_session(cfg: SessionConfig, run_id: str) -> list[dict]:
         "vllm_args": [*VLLM_ARGS, "--gpu-memory-utilization", str(cfg.gpu_memory_utilization)],
         "variants": {v: VARIANTS[v] for v in profile["variants"]},
         "git_commit": cfg.git_commit, "git_dirty": cfg.git_dirty, "preflight": pre,
+        "cuda_home_for_vllm": _vllm_env(cfg).get("CUDA_HOME"),
         "nvidia_smi_at_start": subprocess.run(smi_args, capture_output=True, text=True).stdout,
     }, indent=2, default=str))
     # Exact package versions of the vLLM environment (the python next to the vllm executable).
