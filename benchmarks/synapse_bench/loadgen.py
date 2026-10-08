@@ -77,7 +77,7 @@ async def send_one(
     sent = time.perf_counter()
     status_code = x_cache = provider = None
     ttft = e2e = None
-    prompt_tokens = output_tokens = None
+    prompt_tokens = output_tokens = cached_prompt_tokens = None
     error = None
 
     try:
@@ -102,8 +102,10 @@ async def send_one(
                     if ttft is None and choices and (choices[0].get("delta") or {}).get("content"):
                         ttft = time.perf_counter() - sent
                     if event.get("usage"):
-                        prompt_tokens = event["usage"].get("prompt_tokens")
-                        output_tokens = event["usage"].get("completion_tokens")
+                        usage = event["usage"]
+                        prompt_tokens = usage.get("prompt_tokens")
+                        output_tokens = usage.get("completion_tokens")
+                        cached_prompt_tokens = (usage.get("prompt_tokens_details") or {}).get("cached_tokens")
     except httpx.TimeoutException:
         error = "timeout"
     except httpx.HTTPError as exc:
@@ -124,6 +126,7 @@ async def send_one(
         ttft_s=ttft if ok else None,
         e2e_s=e2e if ok else None,
         prompt_tokens=prompt_tokens,
+        cached_prompt_tokens=cached_prompt_tokens,
         output_tokens=output_tokens if ok else None,
         x_cache=x_cache,
         provider=provider,

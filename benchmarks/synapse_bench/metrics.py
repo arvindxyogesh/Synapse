@@ -73,6 +73,9 @@ class LevelSummary:
     requests_per_s: float | None
     gpu_price_per_hour: float | None
     cost_per_1k_output_tokens_usd: float | None
+    # Sum of backend-reported cached prompt tokens; None if the backend never
+    # reports them. Should be 0 for a valid TTFT comparison (DECISIONS.md D12).
+    cached_prompt_tokens: int | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -99,6 +102,7 @@ def summarize_level(
     output_tokens = [r.output_tokens for r in ok if r.output_tokens is not None]
     decode_speeds = [s for s in (decode_tokens_per_second(r) for r in ok) if s is not None]
 
+    reported_cached = [r.cached_prompt_tokens for r in records if r.cached_prompt_tokens is not None]
     aggregate = sum(output_tokens) / wall_time_s if wall_time_s > 0 and output_tokens else None
     cost = None
     if gpu_price_per_hour is not None and aggregate:
@@ -121,6 +125,7 @@ def summarize_level(
         requests_per_s=len(ok) / wall_time_s if wall_time_s > 0 and ok else None,
         gpu_price_per_hour=gpu_price_per_hour,
         cost_per_1k_output_tokens_usd=cost,
+        cached_prompt_tokens=sum(reported_cached) if reported_cached else None,
     )
 
 

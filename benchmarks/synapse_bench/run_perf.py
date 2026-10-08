@@ -137,6 +137,10 @@ async def run(args: argparse.Namespace, api_key: str) -> int:
                     if row["client_cpu_fraction"] > CLIENT_CPU_WARNING:
                         print(f"warning: client CPU {row['client_cpu_fraction']:.2f} -- the load generator may be "
                               "the bottleneck at this level", file=sys.stderr)
+                    if row["cached_prompt_tokens"]:
+                        print(f"warning: the backend served {row['cached_prompt_tokens']} prompt tokens from its own "
+                              "prompt cache at this level -- TTFT is not comparable (start vLLM with "
+                              "--no-enable-prefix-caching)", file=sys.stderr)
                     integrity_failures += sum(1 for r in level.records if r.error in INTEGRITY_ERRORS)
 
     (args.out / "summary.json").write_text(json.dumps(rows, indent=2))

@@ -93,3 +93,14 @@ async def test_run_level_rejects_bad_arguments():
         await run_level(TARGET, ["p"], concurrency=0, n_requests=1, max_tokens=8)
     with pytest.raises(ValueError):
         await run_level(TARGET, [], concurrency=1, n_requests=1, max_tokens=8)
+
+
+async def test_records_backend_prompt_cache_hits(fake):
+    fake.cached_tokens = 30
+    record = await _one()
+    assert record.ok and record.cached_prompt_tokens == 30
+
+
+async def test_cached_prompt_tokens_absent_when_not_reported(fake):
+    record = await _one()
+    assert record.cached_prompt_tokens is None

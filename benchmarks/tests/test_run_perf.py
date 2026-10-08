@@ -105,3 +105,11 @@ def test_vllm_log_and_gpu_sampling_are_recorded(fake, tmp_path, monkeypatch):
     assert meta["vllm_log"]["weights_gib"] == 5.43 and meta["vllm_log"]["kv_cache_memory_gib"] == 32.17
     # Without nvidia-smi the field is explicitly null rather than missing or zero.
     assert all(row["gpu_memory"] is None for row in json.loads((out / "summary.json").read_text()))
+
+
+def test_warns_when_backend_prompt_cache_was_used(fake, tmp_path, capsys):
+    fake.cached_tokens = 2
+    code, out = _run(tmp_path)
+    assert code == 0  # recorded and warned about, not an invalid response
+    assert "prompt cache" in capsys.readouterr().err
+    assert all(row["cached_prompt_tokens"] == 8 for row in json.loads((out / "summary.json").read_text()))

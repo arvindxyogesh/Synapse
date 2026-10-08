@@ -22,11 +22,12 @@ class FakeBackend:
     how many requests are in flight at once."""
 
     def __init__(self, prefill_s=0.05, per_token_s=0.01, n_tokens=5, provider="vllm", x_cache="bypass",
-                 send_done=True, send_usage=True, status=200, raise_timeout=False):
+                 send_done=True, send_usage=True, status=200, raise_timeout=False, cached_tokens=None):
         self.prefill_s, self.per_token_s, self.n_tokens = prefill_s, per_token_s, n_tokens
         self.provider, self.x_cache = provider, x_cache
         self.send_done, self.send_usage, self.status = send_done, send_usage, status
         self.raise_timeout = raise_timeout
+        self.cached_tokens = cached_tokens
         self.in_flight = self.max_in_flight = 0
         self.prompts_seen: list[str] = []
         self.bodies: list[dict] = []
@@ -56,8 +57,10 @@ class FakeBackend:
                 await asyncio.sleep(self.per_token_s)
             yield _sse({"provider": self.provider, "choices": [{"delta": {"content": f"w{i} "}}]})
         if self.send_usage:
-            yield _sse({"provider": self.provider, "choices": [],
-                        "usage": {"prompt_tokens": 3, "completion_tokens": self.n_tokens}})
+            usage = {"prompt_tokens": 3, "completion_tokens": self.n_tokens}
+            if self.cached_tokens is not None:
+                usage["prompt_tokens_details"] = {"cached_tokens": self.cached_tokens}
+            yield _sse({"provider": self.provider, "choices": [], "usage": usage})
         self.in_flight -= 1
         if self.send_done:
             yield _sse("[DONE]")

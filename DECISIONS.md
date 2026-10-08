@@ -451,3 +451,51 @@ parser handles the phrasings known when it was written, and returns `None`
 for anything it can't find; it never estimates. Before any memory number is
 published, milestone 4 checks the parser against the real server log from
 the GPU run.
+
+---
+
+## D12. The dry run found a measurement trap: the backend's own prompt cache
+
+**Date:** 2026-10-08
+
+**What happened.** Before renting a GPU, the whole harness was run on a
+MacBook against Ollama with `qwen2.5:0.5b`. Those numbers are throwaway and
+aren't published; the point was to find bugs. The gateway-vs-direct
+comparison at concurrency 1 showed the gateway's TTFT p95 about 10x higher
+than direct. Taken at face value, that's a damning "gateway overhead" result.
+
+**It was wrong.** The slow gateway requests were exactly the four longest
+prompts (1,137–3,416 characters). The direct run happened *second*, and
+Ollama keeps recently processed prompts in a cache, so the direct run got
+those long prompts pre-processed. Swapping the order flipped the result:
+cold direct was 107–259 ms on those prompts, and the gateway running second
+was 20–23 ms. The gap was run order, not the gateway.
+
+**Why it matters for the real run.** vLLM has the same mechanism
+(*automatic prefix caching*): if a new request starts with the same tokens
+as an earlier one, vLLM reuses the stored KV cache instead of recomputing
+it. It's a real production optimization, but in a benchmark that sends the
+same prompts at every concurrency level, to every target, it makes whatever
+runs later look faster.
+
+**Fix.**
+1. *Prevent:* the GPU run starts vLLM with `--no-enable-prefix-caching`, so
+   every request pays its full prompt cost and order can't matter.
+2. *Detect:* the harness records the backend's own count of cached prompt
+   tokens (`usage.prompt_tokens_details.cached_tokens`) whenever it's
+   reported. It sums them per level and prints a warning if any are non-zero.
+   This was checked against Ollama, where the warning fired (3,104 cached
+   tokens). vLLM only reports this field when started with
+   `--enable-prompt-tokens-details`, so the GPU run uses that flag too, to
+   *prove* the cache was off rather than assume it.
+
+**Limitation.** The gateway doesn't pass `prompt_tokens_details` through, so
+only the direct target reports it. Both targets hit the same vLLM server,
+though, so a direct run showing 0 cached tokens confirms the server's cache
+was off for both.
+
+**The broader lesson.** A comparison can be confounded by anything that
+remembers earlier requests. This setup has three such layers: Synapse's
+semantic cache (bypassed with a header), the backend's prompt cache (now
+disabled and checked), and warm-up (handled with discarded warm-up
+requests).

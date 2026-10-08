@@ -14,6 +14,10 @@ class RequestRecord:
     ttft_s: float | None  # send -> first chunk with text
     e2e_s: float | None  # send -> [DONE]
     prompt_tokens: int | None
+    # Prompt tokens the backend served from its own prefix/prompt cache, when
+    # it reports them (usage.prompt_tokens_details.cached_tokens). Anything
+    # above 0 means TTFT was measured on partly pre-processed prompts.
+    cached_prompt_tokens: int | None
     output_tokens: int | None
     x_cache: str | None  # gateway's cache verdict ("bypass"/"hit"/"miss"), None when talking to vLLM directly
     provider: str | None  # who answered, as reported in the stream ("vllm", "cache", "mock", ...)

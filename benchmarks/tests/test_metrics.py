@@ -18,7 +18,8 @@ def _rec(i, ok=True, ttft=0.1, e2e=1.1, out=101, error=None):
     return RequestRecord(
         index=i, ok=ok, status_code=200 if ok else 502, error=error, start_s=0.0,
         ttft_s=ttft if ok else None, e2e_s=e2e if ok else None,
-        prompt_tokens=10, output_tokens=out if ok else None, x_cache="bypass", provider="vllm",
+        prompt_tokens=10, cached_prompt_tokens=None, output_tokens=out if ok else None, x_cache="bypass",
+        provider="vllm",
     )
 
 
