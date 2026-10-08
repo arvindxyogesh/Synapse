@@ -321,3 +321,34 @@ answer-extraction step. Output text after the EOS point is meaningless filler,
 which is fine for measuring speed and wrong for measuring correctness.
 
 **Cost.** One non-standard request field, documented in the README.
+
+---
+
+## D9. Streamed responses report token usage (OpenAI's `stream_options.include_usage`)
+
+**Date:** 2026-10-08
+
+**Context.** The benchmark measures output tokens per second, so it needs to
+know how many tokens each streamed reply contained. Non-streamed responses
+carry a `usage` object. Streamed ones from Synapse didn't. Counting the text
+chunks isn't a substitute: a chunk can hold several tokens, or part of one.
+
+**Options.**
+1. Re-tokenize the received text on the client with the model's tokenizer.
+   That adds a heavy dependency, needs the right tokenizer per model, and
+   still isn't guaranteed to match what the server actually generated.
+2. Always append a usage chunk to every stream. That could surprise clients
+   that assume every chunk has at least one `choices` entry.
+3. Follow the OpenAI spec: when a request sets
+   `stream_options: {"include_usage": true}`, send one extra chunk at the
+   end with empty `choices` and a `usage` object.
+
+**Decision.** Option 3. It's what the real `openai` SDK already
+understands, and it's tested with it. Clients that don't ask get exactly the
+stream they got before. The counts come from the backend itself (vLLM's
+exact numbers), the same ones the gateway already logs.
+
+**Note for interviews.** The token counts are only as exact as the backend's.
+vLLM reports exact counts. When a backend doesn't, the gateway falls back to
+a rough characters ÷ 4 estimate (`providers._estimate_tokens`). The benchmark
+targets vLLM, so its tokens/s numbers use exact counts.

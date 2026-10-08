@@ -277,6 +277,28 @@ def _stream_chat_completion(
             }
         )
 
+    include_usage = body.stream_options is not None and body.stream_options.include_usage
+
+    def _usage_event(provider: str, cached: bool, prompt_tokens: int, completion_tokens: int) -> str:
+        # Per the OpenAI spec: empty choices, usage only, sent last before
+        # [DONE], and only when the client asked via stream_options.
+        return _sse(
+            {
+                "id": completion_id,
+                "object": "chat.completion.chunk",
+                "created": int(time.time()),
+                "model": body.model,
+                "provider": provider,
+                "cached": cached,
+                "choices": [],
+                "usage": {
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": prompt_tokens + completion_tokens,
+                },
+            }
+        )
+
     def _content_event(delta: str, provider: str, cached: bool) -> str:
         nonlocal ttft_ms
         if ttft_ms is None and delta:
@@ -294,6 +316,8 @@ def _stream_chat_completion(
                     piece = word if i == len(words) - 1 else word + " "
                     yield _content_event(piece, "cache", True)
                 yield _chunk_event("", "cache", True, finish_reason="stop")
+                if include_usage:
+                    yield _usage_event("cache", True, hit.prompt_tokens, hit.completion_tokens)
                 yield "data: [DONE]\n\n"
 
                 _maybe_shadow_verify(body.model, hit, prompt)
@@ -316,6 +340,8 @@ def _stream_chat_completion(
                     yield _chunk_event("", provider, False, finish_reason="stop")
                 else:
                     yield _content_event(piece.text, provider, False)
+            if include_usage:
+                yield _usage_event(provider, False, prompt_tokens, completion_tokens)
             yield "data: [DONE]\n\n"
 
             if use_cache:

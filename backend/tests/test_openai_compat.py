@@ -86,3 +86,39 @@ async def test_real_openai_sdk_can_bypass_cache_with_extra_headers(openai_client
         extra_headers={"x-synapse-cache": "bypass"},
     )
     assert raw.headers["x-cache"] == "bypass"
+
+
+@pytest.mark.asyncio
+async def test_real_openai_sdk_streaming_reports_usage_when_asked(openai_client):
+    stream = await openai_client.chat.completions.create(
+        model="llama3",
+        messages=[{"role": "user", "content": "count my tokens please"}],
+        stream=True,
+        stream_options={"include_usage": True},
+        extra_headers={"x-synapse-cache": "bypass"},
+    )
+    chunks = [c async for c in stream]
+    # Exactly one usage chunk, last, with no choices -- as the SDK expects.
+    assert [c.usage is not None for c in chunks].count(True) == 1
+    last = chunks[-1]
+    assert last.choices == [] and last.usage.completion_tokens > 0
+    assert last.usage.total_tokens == last.usage.prompt_tokens + last.usage.completion_tokens
+
+
+@pytest.mark.asyncio
+async def test_real_openai_sdk_streaming_cache_hit_reports_usage(openai_client):
+    messages = [{"role": "user", "content": "usage on a cache hit"}]
+    await openai_client.chat.completions.create(model="llama3", messages=messages)  # prime the cache
+    stream = await openai_client.chat.completions.create(
+        model="llama3", messages=messages, stream=True, stream_options={"include_usage": True}
+    )
+    chunks = [c async for c in stream]
+    assert chunks[-1].usage is not None and chunks[-1].usage.completion_tokens > 0
+
+
+@pytest.mark.asyncio
+async def test_streaming_without_include_usage_sends_no_usage_chunk(openai_client):
+    stream = await openai_client.chat.completions.create(
+        model="llama3", messages=[{"role": "user", "content": "no usage please"}], stream=True
+    )
+    assert all(c.usage is None for c in [c async for c in stream])
