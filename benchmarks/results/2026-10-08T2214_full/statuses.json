@@ -1,0 +1,26 @@
+[
+  {
+    "variant": "qwen2.5-7b-bf16",
+    "started_utc": "2026-10-08T22:18:55+00:00",
+    "gpu_before_vllm": null,
+    "vllm_ready_after_s": 357.3,
+    "perf_exit": 0,
+    "perf_repeats_exit": 0,
+    "eval_exit": 0,
+    "finished_utc": "2026-10-08T23:43:28+00:00"
+  },
+  {
+    "variant": "qwen2.5-7b-awq",
+    "error": "BadStatusLine: GET /health HTTP/1.1\r\n"
+  },
+  {
+    "variant": "qwen2.5-7b-gptq-int8",
+    "started_utc": "2026-10-08T23:43:34+00:00",
+    "gpu_before_vllm": null,
+    "vllm_ready_after_s": 651.1,
+    "perf_exit": 0,
+    "perf_repeats_exit": 0,
+    "eval_exit": 0,
+    "finished_utc": "2026-10-09T00:36:00+00:00"
+  }
+]

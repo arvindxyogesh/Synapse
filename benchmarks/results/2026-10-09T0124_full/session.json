@@ -1,0 +1,62 @@
+{
+  "run_id": "2026-10-09T0124_full",
+  "mode": "full",
+  "profile": {
+    "variants": [
+      "qwen2.5-7b-bf16",
+      "qwen2.5-7b-awq",
+      "qwen2.5-7b-gptq-int8"
+    ],
+    "concurrency": "1,4,16,64",
+    "requests": 100,
+    "warmup": 10,
+    "repeat_concurrency": "1,16",
+    "eval_limit": null
+  },
+  "gpu_label": "NVIDIA A40, 46068 MiB (Great Lakes spgpu, job 63571760, whole GPU)",
+  "gpu_price_per_hour": 0.217,
+  "gpu_memory_utilization": 0.9,
+  "cuda_device": null,
+  "vllm_version": "0.31.0",
+  "vllm_args": [
+    "--max-model-len",
+    "4096",
+    "--max-num-seqs",
+    "128",
+    "--no-enable-prefix-caching",
+    "--enable-prompt-tokens-details",
+    "--seed",
+    "0",
+    "--gpu-memory-utilization",
+    "0.9"
+  ],
+  "variants": {
+    "qwen2.5-7b-bf16": {
+      "repo": "Qwen/Qwen2.5-7B-Instruct",
+      "revision": "a09a35458c702b33eeacc393d103063234e8bc28"
+    },
+    "qwen2.5-7b-awq": {
+      "repo": "Qwen/Qwen2.5-7B-Instruct-AWQ",
+      "revision": "b25037543e9394b818fdfca67ab2a00ecc7dd641"
+    },
+    "qwen2.5-7b-gptq-int8": {
+      "repo": "Qwen/Qwen2.5-7B-Instruct-GPTQ-Int8",
+      "revision": "6711f2b6fc95545efe6018c469eca6832e28cefd"
+    }
+  },
+  "git_commit": "4f42b29e571a8d9ff6cdc627820fd6f46355ef38",
+  "git_dirty": false,
+  "preflight": {
+    "vllm_version": "0.31.0",
+    "help_exit": 0,
+    "missing_flags": []
+  },
+  "cuda_home_for_vllm": "/gpfs/accounts/si650f26_class_root/si650f26_class/savyo/synapse-bench/envs/vllm/lib/python3.1/site-packages/nvidia/cu13",
+  "vllm_env": {
+    "VLLM_USE_FLASHINFER_SAMPLER": "0",
+    "VLLM_NO_USAGE_STATS": "1",
+    "VLLM_DO_NOT_TRACK": "1",
+    "DO_NOT_TRACK": "1"
+  },
+  "nvidia_smi_at_start": "Thu Oct  8 21:31:45 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 595.71.05              Driver Version: 595.71.05      CUDA Version: 13.2     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  NVIDIA A40                     On  |   00000000:1D:00.0 Off |                    0 |\n|  0%   30C    P8             27W /  300W |       0MiB /  46068MiB |      0%   E. Process |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|  No running processes found                                                             |\n+-----------------------------------------------------------------------------------------+\n"
+}

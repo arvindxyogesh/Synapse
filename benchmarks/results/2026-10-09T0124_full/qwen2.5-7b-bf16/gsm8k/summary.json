@@ -1,0 +1,19 @@
+{
+  "n": 1319,
+  "n_errors": 0,
+  "n_possibly_truncated": 0,
+  "strict": {
+    "correct": 1209,
+    "accuracy": 0.9166034874905231,
+    "ci95_low": 0.900445596524249,
+    "ci95_high": 0.9303417912020209
+  },
+  "flexible": {
+    "correct": 1154,
+    "accuracy": 0.8749052312357847,
+    "ci95_low": 0.8559556580662173,
+    "ci95_high": 0.891677396038679
+  },
+  "model": "qwen2.5-7b-bf16",
+  "limit": null
+}

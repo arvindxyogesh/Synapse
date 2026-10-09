@@ -1,0 +1,3 @@
+qwen2.5-7b-bf16: n=1319 errors=0 possibly_truncated=0
+  strict   91.7% [90.0%, 93.0%]
+  flexible 87.5% [85.6%, 89.2%]
