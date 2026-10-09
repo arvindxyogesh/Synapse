@@ -20,9 +20,12 @@ $HF_HOME (set it to keep weights out of your home directory).
 """
 
 import argparse
+import http.client
 import json
 import os
 import secrets
+import signal
+import socket
 import subprocess
 import time
 import urllib.request
@@ -102,6 +105,7 @@ class SessionConfig:
     git_commit: str | None = None
     git_dirty: bool | None = None
     on_variant_done: object = None  # optional callback (Modal uses it to commit its volume)
+    variants: list[str] | None = None  # override the profile's variant list (e.g. to rerun one)
 
     @property
     def ports(self) -> tuple[int, int, int]:
@@ -120,10 +124,42 @@ def _wait_http(url: str, timeout_s: float, proc: subprocess.Popen | None = None)
             with urllib.request.urlopen(url, timeout=5) as resp:
                 if resp.status == 200:
                     return
-        except OSError:
+        except (OSError, http.client.HTTPException):
+            # Not up yet -- including a garbled reply from whatever briefly held
+            # the port (the full run's AWQ variant died on "BadStatusLine" here).
+            # Identity is checked separately (_check_serves).
             pass
         time.sleep(3)
     raise TimeoutError(f"{url} not up after {timeout_s:.0f}s")
+
+
+def _port_free(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(("127.0.0.1", port))
+        except OSError:
+            return False
+    return True
+
+
+def _wait_port_free(port: int, timeout_s: float = 120) -> None:
+    """The previous variant's server must be fully gone before the next one
+    starts on the same port, or the health check could talk to the old one."""
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        if _port_free(port):
+            return
+        time.sleep(2)
+    raise RuntimeError(f"port {port} still in use after {timeout_s:.0f}s -- refusing to start the next server")
+
+
+def _check_serves(base_url: str, expected_model: str) -> None:
+    """Whatever answered /health must be the vLLM we just started: its
+    /v1/models has to list exactly this variant's model."""
+    with urllib.request.urlopen(f"{base_url}/v1/models", timeout=10) as resp:
+        served = [m["id"] for m in json.loads(resp.read())["data"]]
+    if served != [expected_model]:
+        raise RuntimeError(f"{base_url} serves {served}, expected [{expected_model!r}]")
 
 
 def _post_json(url: str, body: dict, headers: dict) -> dict:
@@ -139,13 +175,25 @@ def _run_logged(cmd: list[str], log_path: Path, **kwargs) -> int:
 
 
 def _stop(procs) -> None:
+    """Stop each process AND everything it started. vLLM runs its engine in a
+    child process; terminating only the parent can leave that child holding
+    the GPU or the port. Each server is launched as its own process group
+    (start_new_session=True), so the whole group is signalled."""
     for proc in procs:
-        if proc is not None and proc.poll() is None:
-            proc.terminate()
-            try:
-                proc.wait(timeout=60)
-            except subprocess.TimeoutExpired:
-                proc.kill()
+        if proc is None:
+            continue
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            continue
+        try:
+            proc.wait(timeout=60)
+        except subprocess.TimeoutExpired:
+            pass
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)  # anything still alive in the group
+        except ProcessLookupError:
+            pass
 
 
 def pip_cuda_home(vllm_bin: str) -> Path | None:
@@ -229,21 +277,24 @@ def serve_and_measure(cfg: SessionConfig, name: str, out: Path) -> dict:
     status = {"variant": name, "started_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
               "gpu_before_vllm": gpu_snapshot(cfg.cuda_device)}
 
+    for port in cfg.ports:
+        _wait_port_free(port)
     vllm_log = open(out / "vllm.log", "w")
     vllm = subprocess.Popen(
         [cfg.vllm_bin, "serve", spec["repo"], "--revision", spec["revision"], "--host", "127.0.0.1",
          "--port", str(vllm_port), "--gpu-memory-utilization", str(cfg.gpu_memory_utilization), *VLLM_ARGS],
-        stdout=vllm_log, stderr=subprocess.STDOUT, env=_vllm_env(cfg),
+        stdout=vllm_log, stderr=subprocess.STDOUT, env=_vllm_env(cfg), start_new_session=True,
     )
     redis = gateway = None
     try:
         t0 = time.monotonic()
         _wait_http(f"http://127.0.0.1:{vllm_port}/health", timeout_s=1800, proc=vllm)
+        _check_serves(f"http://127.0.0.1:{vllm_port}", spec["repo"])
         status["vllm_ready_after_s"] = round(time.monotonic() - t0, 1)
 
         redis = subprocess.Popen([cfg.redis_bin, "--port", str(redis_port), "--bind", "127.0.0.1",
                                   "--save", "", "--appendonly", "no"],
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         registry = out / "models.toml"
         registry.write_text(
             f'[models."{name}"]\nprovider = "vllm"\nbase_url = "http://127.0.0.1:{vllm_port}"\n'
@@ -259,7 +310,7 @@ def serve_and_measure(cfg: SessionConfig, name: str, out: Path) -> dict:
         gateway = subprocess.Popen(
             [cfg.gateway_python, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(gw_port),
              "--log-level", "warning"],
-            cwd=REPO / "backend", env=gw_env, stdout=gateway_log, stderr=subprocess.STDOUT,
+            cwd=REPO / "backend", env=gw_env, stdout=gateway_log, stderr=subprocess.STDOUT, start_new_session=True,
         )
         gw_url = f"http://127.0.0.1:{gw_port}"
         _wait_http(f"{gw_url}/health", timeout_s=120, proc=gateway)
@@ -313,7 +364,7 @@ def run_session(cfg: SessionConfig, run_id: str) -> list[dict]:
         "gpu_price_per_hour": cfg.gpu_price_per_hour, "gpu_memory_utilization": cfg.gpu_memory_utilization,
         "cuda_device": cfg.cuda_device, "vllm_version": VLLM_VERSION,
         "vllm_args": [*VLLM_ARGS, "--gpu-memory-utilization", str(cfg.gpu_memory_utilization)],
-        "variants": {v: VARIANTS[v] for v in profile["variants"]},
+        "variants": {v: VARIANTS[v] for v in (cfg.variants or profile["variants"])},
         "git_commit": cfg.git_commit, "git_dirty": cfg.git_dirty, "preflight": pre,
         "cuda_home_for_vllm": _vllm_env(cfg).get("CUDA_HOME"),
         "vllm_env": VLLM_ENV,
@@ -325,7 +376,7 @@ def run_session(cfg: SessionConfig, run_id: str) -> list[dict]:
         subprocess.run([vllm_python, "-m", "pip", "freeze"], capture_output=True, text=True).stdout)
 
     statuses = []
-    for name in profile["variants"]:
+    for name in cfg.variants or profile["variants"]:
         try:
             statuses.append(serve_and_measure(cfg, name, session_dir / name))
         except Exception as exc:  # keep going: a failed variant shouldn't lose the others
@@ -357,7 +408,12 @@ def main() -> None:
     p.add_argument("--vllm-bin", default="vllm")
     p.add_argument("--redis-bin", default="redis-server")
     p.add_argument("--port-offset", type=int, default=0)
+    p.add_argument("--variants", help=f"comma-separated subset of {list(VARIANTS)} (default: the profile's)")
     args = p.parse_args()
+    variants = args.variants.split(",") if args.variants else None
+    unknown = [v for v in variants or [] if v not in VARIANTS]
+    if unknown:
+        p.error(f"unknown variant(s) {unknown}")
 
     commit, dirty = git_state()
     if args.mode == "full" and dirty is not False:
@@ -366,7 +422,7 @@ def main() -> None:
                         gpu_label=args.gpu_label, gpu_price_per_hour=args.gpu_price_per_hour,
                         gpu_memory_utilization=args.gpu_memory_utilization, cuda_device=args.cuda_device,
                         vllm_bin=args.vllm_bin, redis_bin=args.redis_bin, port_offset=args.port_offset,
-                        git_commit=commit, git_dirty=dirty)
+                        git_commit=commit, git_dirty=dirty, variants=variants)
     run_id = f"{datetime.now(timezone.utc):%Y-%m-%dT%H%M}_{args.mode}"
     print(f"run_id={run_id} commit={(commit or '?')[:10]} dirty={dirty} config={asdict(cfg)}", flush=True)
     for status in run_session(cfg, run_id):
