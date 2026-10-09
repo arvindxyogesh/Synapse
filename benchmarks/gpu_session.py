@@ -88,6 +88,8 @@ VLLM_ENV = {
 }
 
 VLLM_PORT, GATEWAY_PORT, REDIS_PORT = 8001, 8000, 6379
+# GSM8K output cap; well inside --max-model-len 4096 (prompts are ~150 tokens).
+EVAL_MAX_TOKENS = 2048
 
 
 @dataclass
@@ -341,7 +343,8 @@ def serve_and_measure(cfg: SessionConfig, name: str, out: Path) -> dict:
                                                       env=bench_env)
 
         evaluate = [*py, "synapse_bench.run_eval", "--model", name, "--gateway-url", gw_url,
-                    "--concurrency", "32", "--timeout", "900", "--out", str(out / "gsm8k")]
+                    "--concurrency", "32", "--max-tokens", str(EVAL_MAX_TOKENS), "--timeout", "900",
+                    "--out", str(out / "gsm8k")]
         if profile["eval_limit"]:
             evaluate += ["--limit", str(profile["eval_limit"])]
         status["eval_exit"] = _run_logged(evaluate, out / "eval.log", cwd=REPO / "benchmarks", env=bench_env)

@@ -74,7 +74,7 @@ def test_accuracy_matches_known_answers(monkeypatch, tmp_path):
     assert summary["strict"]["accuracy"] == pytest.approx(4 / 6)
     assert summary["strict"]["ci95_low"] < 4 / 6 < summary["strict"]["ci95_high"]
     # Requests: greedy, cache bypassed, NOT fixed-length.
-    assert all(b["temperature"] == 0.0 and "ignore_eos" not in b and b["max_tokens"] == 512 for b in gateway.bodies)
+    assert all(b["temperature"] == 0.0 and "ignore_eos" not in b and b["max_tokens"] == 2048 for b in gateway.bodies)
 
 
 def test_failed_requests_count_as_wrong(monkeypatch, tmp_path):

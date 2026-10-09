@@ -612,3 +612,53 @@ nothing cached on the node: about 7 minutes for the flag check and about 8
 minutes before vLLM starts loading the model, vs. 87 seconds total on
 `maui`. That's around $0.10 per variant at the job's billed rate, accepted
 rather than adding a "copy the environment to local disk first" step.
+
+---
+
+## D15. First full run: AWQ lost to a port hand-over bug, and the GSM8K cap raised to 2,048 (follow-up to D10/D13)
+
+**Date:** 2026-10-08
+
+**The run.** One Great Lakes job (63559791) on one whole A40 ran the three
+variants back to back, in 2 h 23 min at a cost of $0.52 (matching the account
+balance). The 16-bit and 8-bit GPTQ variants completed with every integrity
+check passing. The 4-bit AWQ variant **failed within a second of starting**,
+with nothing measured.
+
+**Why AWQ failed.** Each variant's vLLM uses the same port. The AWQ server's
+first health check got `BadStatusLine: GET /health HTTP/1.1` back, while its
+own log was still empty, so the reply came from something else on the port
+seconds after the 16-bit server had been stopped. Most likely that was a
+child process of the old server: vLLM runs its engine in a separate process,
+and stopping only the parent can leave the child behind. The health check
+also only treated connection errors as "not ready", so a garbled reply
+aborted the variant.
+
+**Fixes** (tests reproduce both failure modes, and fail on the old code):
+- Every server is started as its own process group, and stopping it signals
+  the whole group.
+- The next variant waits until all its ports are free, and refuses to start
+  otherwise.
+- Malformed replies count as "not ready yet". After `/health` succeeds, the
+  server must list *exactly this variant's model* in `/v1/models`, so a
+  variant can never be measured against the previous one's server.
+
+**Why the GSM8K cap changes.** D13 committed to raising the output cap if
+more than a handful of 7B replies hit it. They did: 30 of 1,319 (16-bit) and
+29 of 1,319 (GPTQ) used exactly 512 tokens. Reading them showed:
+- only 1–2 per variant contained a boxed answer;
+- only one looked repetitive. The rest were sound step-by-step solutions cut
+  off mid-way (e.g. still counting years towards an answer of 13).
+
+So about 2% of questions were being scored wrong for *length*, not maths, and
+not necessarily equally across variants. The cap is now **2,048 tokens**,
+still well inside the 4,096-token context window, and the same for every
+variant. The truncation count stays in every summary, so it will show whether
+2,048 is enough.
+
+**Consequence.** The first run's GSM8K numbers (at 512) are superseded and
+won't be reported as results. The full session is rerun with all three
+variants on one GPU, so the comparison stays within a single card. The first
+run's 16-bit and GPTQ *speed* numbers are kept as raw data: two independent
+runs on two different A40s give a real measure of run-to-run and
+card-to-card spread.

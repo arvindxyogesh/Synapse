@@ -33,7 +33,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--model", required=True)
     p.add_argument("--gateway-url", default="http://localhost:8000")
     p.add_argument("--concurrency", type=int, default=32, help="questions in flight at once")
-    p.add_argument("--max-tokens", type=int, default=512)
+    # 512 cut off ~2% of the 7B's genuine (non-looping) solutions in the first
+    # full run, scoring them wrong for length rather than math (DECISIONS D15).
+    p.add_argument("--max-tokens", type=int, default=2048)
     p.add_argument("--limit", type=int, help="only the first N questions (for dry runs; never for reported results)")
     p.add_argument("--timeout", type=float, default=300.0)
     p.add_argument("--dataset", type=Path, default=WORKLOAD_DIR / "gsm8k_test.jsonl")
