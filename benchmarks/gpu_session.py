@@ -69,6 +69,9 @@ RUN_PROFILES = {
     "full": {"variants": list(VARIANTS), "concurrency": "1,4,16,64", "requests": 100, "warmup": 10,
              "repeat_concurrency": "1,16", "eval_limit": None},
 }
+# Speed only (same settings as "full", no GSM8K): for re-measuring speed when
+# accuracy from an earlier full run is still valid (DECISIONS.md D16).
+RUN_PROFILES["perf"] = {**RUN_PROFILES["full"], "skip_eval": True}
 
 # Environment for every vLLM process, identical for every variant.
 VLLM_ENV = {
@@ -342,6 +345,8 @@ def serve_and_measure(cfg: SessionConfig, name: str, out: Path) -> dict:
             status["perf_repeats_exit"] = _run_logged(repeats, out / "perf_repeats.log", cwd=REPO / "benchmarks",
                                                       env=bench_env)
 
+        if profile.get("skip_eval"):
+            return status
         evaluate = [*py, "synapse_bench.run_eval", "--model", name, "--gateway-url", gw_url,
                     "--concurrency", "32", "--max-tokens", str(EVAL_MAX_TOKENS), "--timeout", "900",
                     "--out", str(out / "gsm8k")]
@@ -419,7 +424,7 @@ def main() -> None:
         p.error(f"unknown variant(s) {unknown}")
 
     commit, dirty = git_state()
-    if args.mode == "full" and dirty is not False:
+    if args.mode != "smoke" and dirty is not False:
         raise SystemExit("full-run results must map to an exact, clean commit -- commit (or check out) first")
     cfg = SessionConfig(mode=args.mode, results_dir=args.results_dir, gateway_python=args.gateway_python,
                         gpu_label=args.gpu_label, gpu_price_per_hour=args.gpu_price_per_hour,
