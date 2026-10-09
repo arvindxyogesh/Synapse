@@ -662,3 +662,66 @@ variants on one GPU, so the comparison stays within a single card. The first
 run's 16-bit and GPTQ *speed* numbers are kept as raw data: two independent
 runs on two different A40s give a real measure of run-to-run and
 card-to-card spread.
+
+---
+
+## D16. A bug the benchmark found: the gateway falls over at 64 concurrent streams (and I introduced it in D1)
+
+**Date:** 2026-10-09
+
+**What the rerun showed.** All three variants completed (Great Lakes job
+63571760, one A40, 3 h 16 min, $0.70). In every variant, **gateway at
+concurrency 64 failed 68–75 of 100 requests**: about 40 as HTTP 500, the rest
+as broken streams (`ReadError`). The same level sent **directly to vLLM had
+zero failures**, and every gateway level up to 16 had zero failures.
+
+**Cause, found by eliminating explanations rather than guessing.**
+1. The gateway log showed every 500 was SQLAlchemy's
+   `QueuePool limit of size 5 overflow 10 reached, connection timed out,
+   timeout 30.00`, raised at the API-key lookup at the start of a request.
+   All 15 pooled database connections were busy.
+2. *Not* connections held during token streaming. A test with a real server
+   showed 0 connections held mid-stream. An earlier version of that test
+   "passed" for the wrong reason: httpx's in-process test transport buffers
+   whole responses, so it never sees a stream in progress.
+3. *Not* the SQLite file sitting on Great Lakes' network filesystem. Measured
+   on the login node, a write takes about 4 ms there vs. about 1 ms on local
+   disk: slower, but nowhere near enough to hold connections for 30 s.
+4. **It is the wait for the first token.** D1 made the streaming path wait
+   for the model's first chunk *inside the request handler*, so a dead
+   backend still gets a proper 502. During that wait, the request's database
+   session, opened for the API-key lookup, still holds its connection. A test
+   with a backend that takes 0.6 s to produce its first token shows **10 of
+   10 waiting requests holding a connection** before the fix, and 0 after.
+
+At concurrency 64, vLLM queues requests and the first token can take
+seconds, so more than 15 requests are waiting at once and the pool empties.
+Then it gets much worse. Taking a connection from the pool is a
+*synchronous, blocking* call inside an `async` handler (the
+"sync work on the event loop" problem noted in the original plan). So the
+next request's API-key lookup **freezes the gateway's entire event loop**
+for up to 30 seconds. No other stream can make progress or release its
+connection, the waiters time out with 500s, and streams that were mid-flight
+break.
+
+**Fix.** Right after the API-key lookup, the key object is detached and the
+read transaction ended, so the connection goes back to the pool before any
+model work starts. Logging at the end of the request borrows a connection
+for a few milliseconds. This also helps non-streaming requests (e.g. the
+GSM8K eval at concurrency 32), which held a connection for the whole model
+call.
+
+**What it means for the numbers.**
+- **Directly-to-vLLM** speed numbers, GPU memory and GSM8K accuracy are
+  unaffected by this bug. Accuracy had 0 errors; the bug could slow eval
+  requests down but not change their answers.
+- **All gateway speed numbers** from this run are affected. Concurrency 64
+  is unusable, and even at 16 (just above the pool size), occasional
+  event-loop freezes may have inflated latency. They won't be published, and
+  speed is re-measured with the fix: gateway and direct in the same job,
+  because the comparison only means something within one run.
+
+**The lesson for interviews.** The failure only appeared at the highest
+concurrency, on real hardware, with a real model whose first token is slow
+under load. Every earlier test, and the smoke run at concurrency 16, passed.
+That's the case for load-testing at the concurrency you plan to serve.
