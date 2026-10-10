@@ -1,0 +1,3543 @@
+{
+  "provenance": {
+    "recorded_utc": "2026-10-10T15:07:40+00:00",
+    "git": {
+      "commit": "5ceec0346c4d1fe745e6e597c4909588576da179",
+      "dirty": false
+    },
+    "gateway_model": "qwen2.5-0.5b",
+    "backend": "Ollama 0.40.1 serving qwen2.5:0.5b on a MacBook (Apple M4); Redis Stack 7.4 (ANN cache); shadow verification off during recording",
+    "embedder_backend": "sentence-transformers",
+    "client_platform": "macOS-26.5-arm64-arm-64bit",
+    "warmup": {
+      "prompt": "Say hello in one short sentence.",
+      "recorded": false,
+      "ttft_ms": 4306.0,
+      "total_ms": 4361.7
+    },
+    "note": "Real requests to a real Synapse gateway, replayed with their original timing. The model is a small laptop model, not the GPU-benchmarked one. One unrecorded warm-up request was sent first, so model loading isn't in the timings."
+  },
+  "topics": [
+    {
+      "id": "semantic-cache",
+      "title": "What is a semantic cache?",
+      "exchanges": [
+        {
+          "kind": "first",
+          "prompt": "What is a semantic cache for an LLM API, in two sentences?",
+          "x_cache": "miss",
+          "provider": "ollama",
+          "ttft_ms": 43.7,
+          "total_ms": 444.6,
+          "usage": {
+            "prompt_tokens": 44,
+            "completion_tokens": 66,
+            "total_tokens": 110
+          },
+          "events": [
+            {
+              "t_ms": 43.7,
+              "text": "A"
+            },
+            {
+              "t_ms": 50.7,
+              "text": " semantic"
+            },
+            {
+              "t_ms": 57.4,
+              "text": " cache"
+            },
+            {
+              "t_ms": 63.8,
+              "text": " for"
+            },
+            {
+              "t_ms": 70.0,
+              "text": " an"
+            },
+            {
+              "t_ms": 76.2,
+              "text": " L"
+            },
+            {
+              "t_ms": 82.7,
+              "text": "LM"
+            },
+            {
+              "t_ms": 89.2,
+              "text": " ("
+            },
+            {
+              "t_ms": 95.4,
+              "text": "Large"
+            },
+            {
+              "t_ms": 101.7,
+              "text": " Language"
+            },
+            {
+              "t_ms": 107.7,
+              "text": " Model"
+            },
+            {
+              "t_ms": 114.0,
+              "text": ")"
+            },
+            {
+              "t_ms": 120.0,
+              "text": " API"
+            },
+            {
+              "t_ms": 126.4,
+              "text": " is"
+            },
+            {
+              "t_ms": 132.4,
+              "text": " a"
+            },
+            {
+              "t_ms": 138.4,
+              "text": " mechanism"
+            },
+            {
+              "t_ms": 144.7,
+              "text": " that"
+            },
+            {
+              "t_ms": 150.7,
+              "text": " stores"
+            },
+            {
+              "t_ms": 156.9,
+              "text": " and"
+            },
+            {
+              "t_ms": 163.1,
+              "text": " retrieves"
+            },
+            {
+              "t_ms": 169.0,
+              "text": " information"
+            },
+            {
+              "t_ms": 175.2,
+              "text": " about"
+            },
+            {
+              "t_ms": 181.4,
+              "text": " the"
+            },
+            {
+              "t_ms": 187.4,
+              "text": " model"
+            },
+            {
+              "t_ms": 193.6,
+              "text": "'s"
+            },
+            {
+              "t_ms": 199.8,
+              "text": " responses"
+            },
+            {
+              "t_ms": 205.8,
+              "text": " in"
+            },
+            {
+              "t_ms": 212.1,
+              "text": " a"
+            },
+            {
+              "t_ms": 218.0,
+              "text": " way"
+            },
+            {
+              "t_ms": 224.2,
+              "text": " that"
+            },
+            {
+              "t_ms": 230.4,
+              "text": " allows"
+            },
+            {
+              "t_ms": 236.4,
+              "text": " for"
+            },
+            {
+              "t_ms": 242.4,
+              "text": " efficient"
+            },
+            {
+              "t_ms": 248.7,
+              "text": " retrieval"
+            },
+            {
+              "t_ms": 254.8,
+              "text": " of"
+            },
+            {
+              "t_ms": 260.9,
+              "text": " relevant"
+            },
+            {
+              "t_ms": 266.8,
+              "text": " information"
+            },
+            {
+              "t_ms": 273.2,
+              "text": " without"
+            },
+            {
+              "t_ms": 279.4,
+              "text": " re"
+            },
+            {
+              "t_ms": 285.3,
+              "text": "training"
+            },
+            {
+              "t_ms": 291.3,
+              "text": " the"
+            },
+            {
+              "t_ms": 297.7,
+              "text": " model"
+            },
+            {
+              "t_ms": 303.6,
+              "text": "."
+            },
+            {
+              "t_ms": 309.7,
+              "text": " This"
+            },
+            {
+              "t_ms": 315.8,
+              "text": " helps"
+            },
+            {
+              "t_ms": 321.8,
+              "text": " in"
+            },
+            {
+              "t_ms": 328.0,
+              "text": " improving"
+            },
+            {
+              "t_ms": 334.1,
+              "text": " the"
+            },
+            {
+              "t_ms": 340.3,
+              "text": " performance"
+            },
+            {
+              "t_ms": 346.5,
+              "text": " and"
+            },
+            {
+              "t_ms": 352.5,
+              "text": " accuracy"
+            },
+            {
+              "t_ms": 358.6,
+              "text": " of"
+            },
+            {
+              "t_ms": 364.8,
+              "text": " the"
+            },
+            {
+              "t_ms": 370.8,
+              "text": " model"
+            },
+            {
+              "t_ms": 377.0,
+              "text": " by"
+            },
+            {
+              "t_ms": 383.1,
+              "text": " reducing"
+            },
+            {
+              "t_ms": 389.3,
+              "text": " the"
+            },
+            {
+              "t_ms": 395.5,
+              "text": " time"
+            },
+            {
+              "t_ms": 401.4,
+              "text": " and"
+            },
+            {
+              "t_ms": 407.4,
+              "text": " resources"
+            },
+            {
+              "t_ms": 413.7,
+              "text": " required"
+            },
+            {
+              "t_ms": 419.8,
+              "text": " for"
+            },
+            {
+              "t_ms": 425.8,
+              "text": " re"
+            },
+            {
+              "t_ms": 432.1,
+              "text": "training"
+            },
+            {
+              "t_ms": 438.1,
+              "text": "."
+            }
+          ]
+        },
+        {
+          "kind": "repeat",
+          "prompt": "What is a semantic cache for an LLM API, in two sentences?",
+          "x_cache": "hit",
+          "provider": "cache",
+          "ttft_ms": 11.7,
+          "total_ms": 12.2,
+          "usage": {
+            "prompt_tokens": 44,
+            "completion_tokens": 66,
+            "total_tokens": 110
+          },
+          "events": [
+            {
+              "t_ms": 11.7,
+              "text": "A "
+            },
+            {
+              "t_ms": 11.7,
+              "text": "semantic "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "cache "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "for "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "an "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "LLM "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "(Large "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "Language "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "Model) "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "API "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "is "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "a "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "mechanism "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "that "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "stores "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "and "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "retrieves "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "information "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "about "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "the "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "model's "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "responses "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "in "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "a "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "way "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "that "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "allows "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "for "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "efficient "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "retrieval "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "of "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "relevant "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "information "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "without "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "retraining "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "the "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "model. "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "This "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "helps "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "in "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "improving "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "the "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "performance "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "and "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "accuracy "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "of "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "the "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "model "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "by "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "reducing "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "the "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "time "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "and "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "resources "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "required "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "for "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "retraining."
+            }
+          ]
+        },
+        {
+          "kind": "reworded",
+          "prompt": "In two sentences, what is a semantic cache for an LLM API?",
+          "x_cache": "hit",
+          "provider": "cache",
+          "ttft_ms": 8.6,
+          "total_ms": 9.0,
+          "usage": {
+            "prompt_tokens": 44,
+            "completion_tokens": 66,
+            "total_tokens": 110
+          },
+          "events": [
+            {
+              "t_ms": 8.6,
+              "text": "A "
+            },
+            {
+              "t_ms": 8.6,
+              "text": "semantic "
+            },
+            {
+              "t_ms": 8.6,
+              "text": "cache "
+            },
+            {
+              "t_ms": 8.6,
+              "text": "for "
+            },
+            {
+              "t_ms": 8.6,
+              "text": "an "
+            },
+            {
+              "t_ms": 8.6,
+              "text": "LLM "
+            },
+            {
+              "t_ms": 8.6,
+              "text": "(Large "
+            },
+            {
+              "t_ms": 8.6,
+              "text": "Language "
+            },
+            {
+              "t_ms": 8.6,
+              "text": "Model) "
+            },
+            {
+              "t_ms": 8.6,
+              "text": "API "
+            },
+            {
+              "t_ms": 8.6,
+              "text": "is "
+            },
+            {
+              "t_ms": 8.6,
+              "text": "a "
+            },
+            {
+              "t_ms": 8.7,
+              "text": "mechanism "
+            },
+            {
+              "t_ms": 8.7,
+              "text": "that "
+            },
+            {
+              "t_ms": 8.7,
+              "text": "stores "
+            },
+            {
+              "t_ms": 8.7,
+              "text": "and "
+            },
+            {
+              "t_ms": 8.7,
+              "text": "retrieves "
+            },
+            {
+              "t_ms": 8.7,
+              "text": "information "
+            },
+            {
+              "t_ms": 8.7,
+              "text": "about "
+            },
+            {
+              "t_ms": 8.7,
+              "text": "the "
+            },
+            {
+              "t_ms": 8.7,
+              "text": "model's "
+            },
+            {
+              "t_ms": 8.7,
+              "text": "responses "
+            },
+            {
+              "t_ms": 8.7,
+              "text": "in "
+            },
+            {
+              "t_ms": 8.7,
+              "text": "a "
+            },
+            {
+              "t_ms": 8.7,
+              "text": "way "
+            },
+            {
+              "t_ms": 8.7,
+              "text": "that "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "allows "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "for "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "efficient "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "retrieval "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "of "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "relevant "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "information "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "without "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "retraining "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "the "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "model. "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "This "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "helps "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "in "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "improving "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "the "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "performance "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "and "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "accuracy "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "of "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "the "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "model "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "by "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "reducing "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "the "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "time "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "and "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "resources "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "required "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "for "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "retraining."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "quantization",
+      "title": "What does quantization do?",
+      "exchanges": [
+        {
+          "kind": "first",
+          "prompt": "Briefly, what does 4-bit quantization do to a language model?",
+          "x_cache": "miss",
+          "provider": "ollama",
+          "ttft_ms": 21.7,
+          "total_ms": 489.8,
+          "usage": {
+            "prompt_tokens": 45,
+            "completion_tokens": 77,
+            "total_tokens": 122
+          },
+          "events": [
+            {
+              "t_ms": 21.7,
+              "text": "4"
+            },
+            {
+              "t_ms": 27.0,
+              "text": "-bit"
+            },
+            {
+              "t_ms": 33.9,
+              "text": " quant"
+            },
+            {
+              "t_ms": 40.4,
+              "text": "ization"
+            },
+            {
+              "t_ms": 46.8,
+              "text": " is"
+            },
+            {
+              "t_ms": 53.6,
+              "text": " a"
+            },
+            {
+              "t_ms": 59.9,
+              "text": " technique"
+            },
+            {
+              "t_ms": 66.4,
+              "text": " used"
+            },
+            {
+              "t_ms": 72.6,
+              "text": " in"
+            },
+            {
+              "t_ms": 78.8,
+              "text": " deep"
+            },
+            {
+              "t_ms": 84.9,
+              "text": " learning"
+            },
+            {
+              "t_ms": 91.2,
+              "text": " models"
+            },
+            {
+              "t_ms": 97.4,
+              "text": " to"
+            },
+            {
+              "t_ms": 103.4,
+              "text": " reduce"
+            },
+            {
+              "t_ms": 109.4,
+              "text": " the"
+            },
+            {
+              "t_ms": 115.7,
+              "text": " number"
+            },
+            {
+              "t_ms": 121.8,
+              "text": " of"
+            },
+            {
+              "t_ms": 127.9,
+              "text": " bits"
+            },
+            {
+              "t_ms": 134.1,
+              "text": " used"
+            },
+            {
+              "t_ms": 140.3,
+              "text": " for"
+            },
+            {
+              "t_ms": 146.5,
+              "text": " quant"
+            },
+            {
+              "t_ms": 152.7,
+              "text": "ization"
+            },
+            {
+              "t_ms": 158.6,
+              "text": ","
+            },
+            {
+              "t_ms": 165.0,
+              "text": " which"
+            },
+            {
+              "t_ms": 171.0,
+              "text": " is"
+            },
+            {
+              "t_ms": 177.1,
+              "text": " the"
+            },
+            {
+              "t_ms": 183.1,
+              "text": " process"
+            },
+            {
+              "t_ms": 189.2,
+              "text": " of"
+            },
+            {
+              "t_ms": 195.2,
+              "text": " converting"
+            },
+            {
+              "t_ms": 201.3,
+              "text": " floating"
+            },
+            {
+              "t_ms": 207.6,
+              "text": "-point"
+            },
+            {
+              "t_ms": 213.9,
+              "text": " numbers"
+            },
+            {
+              "t_ms": 220.0,
+              "text": " into"
+            },
+            {
+              "t_ms": 226.1,
+              "text": " integers"
+            },
+            {
+              "t_ms": 232.2,
+              "text": "."
+            },
+            {
+              "t_ms": 238.2,
+              "text": " This"
+            },
+            {
+              "t_ms": 244.4,
+              "text": " can"
+            },
+            {
+              "t_ms": 250.4,
+              "text": " help"
+            },
+            {
+              "t_ms": 256.6,
+              "text": " improve"
+            },
+            {
+              "t_ms": 262.8,
+              "text": " the"
+            },
+            {
+              "t_ms": 268.7,
+              "text": " model"
+            },
+            {
+              "t_ms": 275.1,
+              "text": "'s"
+            },
+            {
+              "t_ms": 281.3,
+              "text": " performance"
+            },
+            {
+              "t_ms": 287.3,
+              "text": " and"
+            },
+            {
+              "t_ms": 293.3,
+              "text": " reduce"
+            },
+            {
+              "t_ms": 299.4,
+              "text": " the"
+            },
+            {
+              "t_ms": 305.5,
+              "text": " computational"
+            },
+            {
+              "t_ms": 311.6,
+              "text": " cost"
+            },
+            {
+              "t_ms": 317.6,
+              "text": "."
+            },
+            {
+              "t_ms": 324.2,
+              "text": " However"
+            },
+            {
+              "t_ms": 330.3,
+              "text": ","
+            },
+            {
+              "t_ms": 336.1,
+              "text": " it"
+            },
+            {
+              "t_ms": 342.2,
+              "text": " can"
+            },
+            {
+              "t_ms": 348.6,
+              "text": " also"
+            },
+            {
+              "t_ms": 354.5,
+              "text": " lead"
+            },
+            {
+              "t_ms": 360.7,
+              "text": " to"
+            },
+            {
+              "t_ms": 366.8,
+              "text": " a"
+            },
+            {
+              "t_ms": 372.9,
+              "text": " loss"
+            },
+            {
+              "t_ms": 379.0,
+              "text": " of"
+            },
+            {
+              "t_ms": 385.0,
+              "text": " information"
+            },
+            {
+              "t_ms": 391.3,
+              "text": ","
+            },
+            {
+              "t_ms": 397.6,
+              "text": " as"
+            },
+            {
+              "t_ms": 403.6,
+              "text": " the"
+            },
+            {
+              "t_ms": 409.6,
+              "text": " model"
+            },
+            {
+              "t_ms": 415.8,
+              "text": " may"
+            },
+            {
+              "t_ms": 421.9,
+              "text": " not"
+            },
+            {
+              "t_ms": 428.2,
+              "text": " be"
+            },
+            {
+              "t_ms": 434.1,
+              "text": " able"
+            },
+            {
+              "t_ms": 440.4,
+              "text": " to"
+            },
+            {
+              "t_ms": 446.5,
+              "text": " accurately"
+            },
+            {
+              "t_ms": 452.8,
+              "text": " represent"
+            },
+            {
+              "t_ms": 458.8,
+              "text": " certain"
+            },
+            {
+              "t_ms": 465.3,
+              "text": " types"
+            },
+            {
+              "t_ms": 471.3,
+              "text": " of"
+            },
+            {
+              "t_ms": 477.4,
+              "text": " data"
+            },
+            {
+              "t_ms": 483.4,
+              "text": "."
+            }
+          ]
+        },
+        {
+          "kind": "repeat",
+          "prompt": "Briefly, what does 4-bit quantization do to a language model?",
+          "x_cache": "hit",
+          "provider": "cache",
+          "ttft_ms": 11.7,
+          "total_ms": 12.2,
+          "usage": {
+            "prompt_tokens": 45,
+            "completion_tokens": 77,
+            "total_tokens": 122
+          },
+          "events": [
+            {
+              "t_ms": 11.7,
+              "text": "4-bit "
+            },
+            {
+              "t_ms": 11.7,
+              "text": "quantization "
+            },
+            {
+              "t_ms": 11.7,
+              "text": "is "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "a "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "technique "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "used "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "in "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "deep "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "learning "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "models "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "to "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "reduce "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "the "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "number "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "of "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "bits "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "used "
+            },
+            {
+              "t_ms": 11.8,
+              "text": "for "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "quantization, "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "which "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "is "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "the "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "process "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "of "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "converting "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "floating-point "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "numbers "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "into "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "integers. "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "This "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "can "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "help "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "improve "
+            },
+            {
+              "t_ms": 11.9,
+              "text": "the "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "model's "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "performance "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "and "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "reduce "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "the "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "computational "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "cost. "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "However, "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "it "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "can "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "also "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "lead "
+            },
+            {
+              "t_ms": 12.0,
+              "text": "to "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "a "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "loss "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "of "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "information, "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "as "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "the "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "model "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "may "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "not "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "be "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "able "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "to "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "accurately "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "represent "
+            },
+            {
+              "t_ms": 12.1,
+              "text": "certain "
+            },
+            {
+              "t_ms": 12.2,
+              "text": "types "
+            },
+            {
+              "t_ms": 12.2,
+              "text": "of "
+            },
+            {
+              "t_ms": 12.2,
+              "text": "data."
+            }
+          ]
+        },
+        {
+          "kind": "reworded",
+          "prompt": "What does 4-bit quantization do to a language model? Keep it brief.",
+          "x_cache": "hit",
+          "provider": "cache",
+          "ttft_ms": 8.8,
+          "total_ms": 9.3,
+          "usage": {
+            "prompt_tokens": 45,
+            "completion_tokens": 77,
+            "total_tokens": 122
+          },
+          "events": [
+            {
+              "t_ms": 8.8,
+              "text": "4-bit "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "quantization "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "is "
+            },
+            {
+              "t_ms": 8.8,
+              "text": "a "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "technique "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "used "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "in "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "deep "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "learning "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "models "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "to "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "reduce "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "the "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "number "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "of "
+            },
+            {
+              "t_ms": 8.9,
+              "text": "bits "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "used "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "for "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "quantization, "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "which "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "is "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "the "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "process "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "of "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "converting "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "floating-point "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "numbers "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "into "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "integers. "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "This "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "can "
+            },
+            {
+              "t_ms": 9.0,
+              "text": "help "
+            },
+            {
+              "t_ms": 9.1,
+              "text": "improve "
+            },
+            {
+              "t_ms": 9.1,
+              "text": "the "
+            },
+            {
+              "t_ms": 9.1,
+              "text": "model's "
+            },
+            {
+              "t_ms": 9.1,
+              "text": "performance "
+            },
+            {
+              "t_ms": 9.1,
+              "text": "and "
+            },
+            {
+              "t_ms": 9.1,
+              "text": "reduce "
+            },
+            {
+              "t_ms": 9.1,
+              "text": "the "
+            },
+            {
+              "t_ms": 9.1,
+              "text": "computational "
+            },
+            {
+              "t_ms": 9.1,
+              "text": "cost. "
+            },
+            {
+              "t_ms": 9.1,
+              "text": "However, "
+            },
+            {
+              "t_ms": 9.1,
+              "text": "it "
+            },
+            {
+              "t_ms": 9.1,
+              "text": "can "
+            },
+            {
+              "t_ms": 9.1,
+              "text": "also "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "lead "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "to "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "a "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "loss "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "of "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "information, "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "as "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "the "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "model "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "may "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "not "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "be "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "able "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "to "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "accurately "
+            },
+            {
+              "t_ms": 9.2,
+              "text": "represent "
+            },
+            {
+              "t_ms": 9.3,
+              "text": "certain "
+            },
+            {
+              "t_ms": 9.3,
+              "text": "types "
+            },
+            {
+              "t_ms": 9.3,
+              "text": "of "
+            },
+            {
+              "t_ms": 9.3,
+              "text": "data."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "commit-messages",
+      "title": "Writing commit messages",
+      "exchanges": [
+        {
+          "kind": "first",
+          "prompt": "Give three short tips for writing clear git commit messages.",
+          "x_cache": "miss",
+          "provider": "ollama",
+          "ttft_ms": 35.8,
+          "total_ms": 1088.6,
+          "usage": {
+            "prompt_tokens": 40,
+            "completion_tokens": 172,
+            "total_tokens": 212
+          },
+          "events": [
+            {
+              "t_ms": 35.8,
+              "text": "1"
+            },
+            {
+              "t_ms": 41.7,
+              "text": "."
+            },
+            {
+              "t_ms": 48.1,
+              "text": " Use"
+            },
+            {
+              "t_ms": 54.9,
+              "text": " clear"
+            },
+            {
+              "t_ms": 61.2,
+              "text": " and"
+            },
+            {
+              "t_ms": 67.7,
+              "text": " concise"
+            },
+            {
+              "t_ms": 73.8,
+              "text": " language"
+            },
+            {
+              "t_ms": 80.2,
+              "text": ":"
+            },
+            {
+              "t_ms": 86.6,
+              "text": " Your"
+            },
+            {
+              "t_ms": 92.8,
+              "text": " commit"
+            },
+            {
+              "t_ms": 99.0,
+              "text": " message"
+            },
+            {
+              "t_ms": 105.1,
+              "text": " should"
+            },
+            {
+              "t_ms": 111.4,
+              "text": " be"
+            },
+            {
+              "t_ms": 117.6,
+              "text": " clear"
+            },
+            {
+              "t_ms": 123.7,
+              "text": " and"
+            },
+            {
+              "t_ms": 129.9,
+              "text": " concise"
+            },
+            {
+              "t_ms": 136.1,
+              "text": ","
+            },
+            {
+              "t_ms": 142.3,
+              "text": " using"
+            },
+            {
+              "t_ms": 148.4,
+              "text": " simple"
+            },
+            {
+              "t_ms": 154.6,
+              "text": " words"
+            },
+            {
+              "t_ms": 160.9,
+              "text": " and"
+            },
+            {
+              "t_ms": 167.2,
+              "text": " phrases"
+            },
+            {
+              "t_ms": 173.2,
+              "text": " that"
+            },
+            {
+              "t_ms": 179.3,
+              "text": " describe"
+            },
+            {
+              "t_ms": 185.6,
+              "text": " the"
+            },
+            {
+              "t_ms": 191.5,
+              "text": " changes"
+            },
+            {
+              "t_ms": 197.6,
+              "text": " you"
+            },
+            {
+              "t_ms": 203.9,
+              "text": " made"
+            },
+            {
+              "t_ms": 209.8,
+              "text": "."
+            },
+            {
+              "t_ms": 216.1,
+              "text": " Avoid"
+            },
+            {
+              "t_ms": 222.4,
+              "text": " using"
+            },
+            {
+              "t_ms": 228.2,
+              "text": " j"
+            },
+            {
+              "t_ms": 234.5,
+              "text": "argon"
+            },
+            {
+              "t_ms": 240.4,
+              "text": " or"
+            },
+            {
+              "t_ms": 246.5,
+              "text": " technical"
+            },
+            {
+              "t_ms": 252.7,
+              "text": " terms"
+            },
+            {
+              "t_ms": 258.7,
+              "text": " that"
+            },
+            {
+              "t_ms": 264.9,
+              "text": " might"
+            },
+            {
+              "t_ms": 271.0,
+              "text": " be"
+            },
+            {
+              "t_ms": 277.1,
+              "text": " difficult"
+            },
+            {
+              "t_ms": 283.3,
+              "text": " for"
+            },
+            {
+              "t_ms": 289.3,
+              "text": " others"
+            },
+            {
+              "t_ms": 295.2,
+              "text": " to"
+            },
+            {
+              "t_ms": 301.5,
+              "text": " understand"
+            },
+            {
+              "t_ms": 307.5,
+              "text": ".\n\n"
+            },
+            {
+              "t_ms": 313.5,
+              "text": "2"
+            },
+            {
+              "t_ms": 319.8,
+              "text": "."
+            },
+            {
+              "t_ms": 325.9,
+              "text": " Include"
+            },
+            {
+              "t_ms": 331.9,
+              "text": " the"
+            },
+            {
+              "t_ms": 338.0,
+              "text": " context"
+            },
+            {
+              "t_ms": 344.1,
+              "text": ":"
+            },
+            {
+              "t_ms": 350.2,
+              "text": " Your"
+            },
+            {
+              "t_ms": 356.2,
+              "text": " commit"
+            },
+            {
+              "t_ms": 362.2,
+              "text": " message"
+            },
+            {
+              "t_ms": 368.5,
+              "text": " should"
+            },
+            {
+              "t_ms": 374.5,
+              "text": " provide"
+            },
+            {
+              "t_ms": 380.5,
+              "text": " context"
+            },
+            {
+              "t_ms": 386.7,
+              "text": " about"
+            },
+            {
+              "t_ms": 392.8,
+              "text": " the"
+            },
+            {
+              "t_ms": 399.0,
+              "text": " changes"
+            },
+            {
+              "t_ms": 405.0,
+              "text": " you"
+            },
+            {
+              "t_ms": 411.1,
+              "text": " made"
+            },
+            {
+              "t_ms": 417.3,
+              "text": "."
+            },
+            {
+              "t_ms": 423.3,
+              "text": " This"
+            },
+            {
+              "t_ms": 429.5,
+              "text": " can"
+            },
+            {
+              "t_ms": 435.6,
+              "text": " help"
+            },
+            {
+              "t_ms": 441.7,
+              "text": " others"
+            },
+            {
+              "t_ms": 447.8,
+              "text": " understand"
+            },
+            {
+              "t_ms": 453.9,
+              "text": " the"
+            },
+            {
+              "t_ms": 460.0,
+              "text": " purpose"
+            },
+            {
+              "t_ms": 466.3,
+              "text": " of"
+            },
+            {
+              "t_ms": 472.5,
+              "text": " the"
+            },
+            {
+              "t_ms": 478.4,
+              "text": " changes"
+            },
+            {
+              "t_ms": 484.5,
+              "text": " and"
+            },
+            {
+              "t_ms": 491.0,
+              "text": " how"
+            },
+            {
+              "t_ms": 497.1,
+              "text": " they"
+            },
+            {
+              "t_ms": 503.4,
+              "text": " relate"
+            },
+            {
+              "t_ms": 509.5,
+              "text": " to"
+            },
+            {
+              "t_ms": 515.7,
+              "text": " the"
+            },
+            {
+              "t_ms": 521.9,
+              "text": " project"
+            },
+            {
+              "t_ms": 528.0,
+              "text": "."
+            },
+            {
+              "t_ms": 534.1,
+              "text": " It"
+            },
+            {
+              "t_ms": 540.1,
+              "text": "'s"
+            },
+            {
+              "t_ms": 546.6,
+              "text": " important"
+            },
+            {
+              "t_ms": 552.7,
+              "text": " to"
+            },
+            {
+              "t_ms": 558.9,
+              "text": " provide"
+            },
+            {
+              "t_ms": 565.0,
+              "text": " enough"
+            },
+            {
+              "t_ms": 571.8,
+              "text": " context"
+            },
+            {
+              "t_ms": 578.1,
+              "text": " so"
+            },
+            {
+              "t_ms": 584.3,
+              "text": " that"
+            },
+            {
+              "t_ms": 590.4,
+              "text": " others"
+            },
+            {
+              "t_ms": 596.4,
+              "text": " can"
+            },
+            {
+              "t_ms": 602.8,
+              "text": " understand"
+            },
+            {
+              "t_ms": 608.9,
+              "text": " the"
+            },
+            {
+              "t_ms": 615.0,
+              "text": " changes"
+            },
+            {
+              "t_ms": 621.3,
+              "text": " without"
+            },
+            {
+              "t_ms": 627.3,
+              "text": " needing"
+            },
+            {
+              "t_ms": 633.6,
+              "text": " to"
+            },
+            {
+              "t_ms": 639.5,
+              "text": " read"
+            },
+            {
+              "t_ms": 645.7,
+              "text": " the"
+            },
+            {
+              "t_ms": 651.9,
+              "text": " commit"
+            },
+            {
+              "t_ms": 658.0,
+              "text": " message"
+            },
+            {
+              "t_ms": 664.1,
+              "text": ".\n\n"
+            },
+            {
+              "t_ms": 670.5,
+              "text": "3"
+            },
+            {
+              "t_ms": 676.4,
+              "text": "."
+            },
+            {
+              "t_ms": 682.4,
+              "text": " Use"
+            },
+            {
+              "t_ms": 688.5,
+              "text": " descriptive"
+            },
+            {
+              "t_ms": 694.5,
+              "text": " tags"
+            },
+            {
+              "t_ms": 700.8,
+              "text": ":"
+            },
+            {
+              "t_ms": 706.7,
+              "text": " Git"
+            },
+            {
+              "t_ms": 712.8,
+              "text": " has"
+            },
+            {
+              "t_ms": 719.1,
+              "text": " a"
+            },
+            {
+              "t_ms": 725.2,
+              "text": " feature"
+            },
+            {
+              "t_ms": 731.4,
+              "text": " called"
+            },
+            {
+              "t_ms": 737.5,
+              "text": " tags"
+            },
+            {
+              "t_ms": 743.5,
+              "text": " that"
+            },
+            {
+              "t_ms": 749.7,
+              "text": " allows"
+            },
+            {
+              "t_ms": 755.7,
+              "text": " you"
+            },
+            {
+              "t_ms": 761.9,
+              "text": " to"
+            },
+            {
+              "t_ms": 768.0,
+              "text": " create"
+            },
+            {
+              "t_ms": 774.1,
+              "text": " a"
+            },
+            {
+              "t_ms": 780.4,
+              "text": " unique"
+            },
+            {
+              "t_ms": 786.8,
+              "text": " identifier"
+            },
+            {
+              "t_ms": 792.9,
+              "text": " for"
+            },
+            {
+              "t_ms": 799.0,
+              "text": " each"
+            },
+            {
+              "t_ms": 805.3,
+              "text": " commit"
+            },
+            {
+              "t_ms": 811.4,
+              "text": "."
+            },
+            {
+              "t_ms": 817.7,
+              "text": " Use"
+            },
+            {
+              "t_ms": 823.7,
+              "text": " descriptive"
+            },
+            {
+              "t_ms": 830.0,
+              "text": " tags"
+            },
+            {
+              "t_ms": 836.1,
+              "text": " that"
+            },
+            {
+              "t_ms": 842.2,
+              "text": " describe"
+            },
+            {
+              "t_ms": 848.3,
+              "text": " the"
+            },
+            {
+              "t_ms": 854.4,
+              "text": " changes"
+            },
+            {
+              "t_ms": 860.6,
+              "text": " you"
+            },
+            {
+              "t_ms": 866.8,
+              "text": " made"
+            },
+            {
+              "t_ms": 872.8,
+              "text": ","
+            },
+            {
+              "t_ms": 878.9,
+              "text": " such"
+            },
+            {
+              "t_ms": 885.1,
+              "text": " as"
+            },
+            {
+              "t_ms": 891.0,
+              "text": " \""
+            },
+            {
+              "t_ms": 897.1,
+              "text": "feat"
+            },
+            {
+              "t_ms": 903.3,
+              "text": "\","
+            },
+            {
+              "t_ms": 909.2,
+              "text": " \""
+            },
+            {
+              "t_ms": 915.4,
+              "text": "fix"
+            },
+            {
+              "t_ms": 921.4,
+              "text": "\","
+            },
+            {
+              "t_ms": 927.5,
+              "text": " \""
+            },
+            {
+              "t_ms": 933.8,
+              "text": "ref"
+            },
+            {
+              "t_ms": 940.3,
+              "text": "actor"
+            },
+            {
+              "t_ms": 947.0,
+              "text": "\","
+            },
+            {
+              "t_ms": 953.0,
+              "text": " or"
+            },
+            {
+              "t_ms": 959.1,
+              "text": " \""
+            },
+            {
+              "t_ms": 965.1,
+              "text": "docs"
+            },
+            {
+              "t_ms": 971.5,
+              "text": "\"."
+            },
+            {
+              "t_ms": 977.5,
+              "text": " This"
+            },
+            {
+              "t_ms": 983.7,
+              "text": " can"
+            },
+            {
+              "t_ms": 989.8,
+              "text": " help"
+            },
+            {
+              "t_ms": 995.9,
+              "text": " others"
+            },
+            {
+              "t_ms": 1002.2,
+              "text": " quickly"
+            },
+            {
+              "t_ms": 1008.4,
+              "text": " identify"
+            },
+            {
+              "t_ms": 1014.4,
+              "text": " the"
+            },
+            {
+              "t_ms": 1020.7,
+              "text": " changes"
+            },
+            {
+              "t_ms": 1026.7,
+              "text": " you"
+            },
+            {
+              "t_ms": 1032.9,
+              "text": " made"
+            },
+            {
+              "t_ms": 1039.0,
+              "text": " and"
+            },
+            {
+              "t_ms": 1045.0,
+              "text": " understand"
+            },
+            {
+              "t_ms": 1051.3,
+              "text": " the"
+            },
+            {
+              "t_ms": 1057.2,
+              "text": " purpose"
+            },
+            {
+              "t_ms": 1063.6,
+              "text": " of"
+            },
+            {
+              "t_ms": 1069.9,
+              "text": " the"
+            },
+            {
+              "t_ms": 1076.1,
+              "text": " changes"
+            },
+            {
+              "t_ms": 1082.2,
+              "text": "."
+            }
+          ]
+        },
+        {
+          "kind": "repeat",
+          "prompt": "Give three short tips for writing clear git commit messages.",
+          "x_cache": "hit",
+          "provider": "cache",
+          "ttft_ms": 21.9,
+          "total_ms": 22.9,
+          "usage": {
+            "prompt_tokens": 40,
+            "completion_tokens": 172,
+            "total_tokens": 212
+          },
+          "events": [
+            {
+              "t_ms": 21.9,
+              "text": "1. "
+            },
+            {
+              "t_ms": 21.9,
+              "text": "Use "
+            },
+            {
+              "t_ms": 21.9,
+              "text": "clear "
+            },
+            {
+              "t_ms": 21.9,
+              "text": "and "
+            },
+            {
+              "t_ms": 21.9,
+              "text": "concise "
+            },
+            {
+              "t_ms": 21.9,
+              "text": "language: "
+            },
+            {
+              "t_ms": 21.9,
+              "text": "Your "
+            },
+            {
+              "t_ms": 21.9,
+              "text": "commit "
+            },
+            {
+              "t_ms": 21.9,
+              "text": "message "
+            },
+            {
+              "t_ms": 21.9,
+              "text": "should "
+            },
+            {
+              "t_ms": 21.9,
+              "text": "be "
+            },
+            {
+              "t_ms": 22.0,
+              "text": "clear "
+            },
+            {
+              "t_ms": 22.0,
+              "text": "and "
+            },
+            {
+              "t_ms": 22.0,
+              "text": "concise, "
+            },
+            {
+              "t_ms": 22.0,
+              "text": "using "
+            },
+            {
+              "t_ms": 22.0,
+              "text": "simple "
+            },
+            {
+              "t_ms": 22.0,
+              "text": "words "
+            },
+            {
+              "t_ms": 22.0,
+              "text": "and "
+            },
+            {
+              "t_ms": 22.0,
+              "text": "phrases "
+            },
+            {
+              "t_ms": 22.0,
+              "text": "that "
+            },
+            {
+              "t_ms": 22.0,
+              "text": "describe "
+            },
+            {
+              "t_ms": 22.0,
+              "text": "the "
+            },
+            {
+              "t_ms": 22.0,
+              "text": "changes "
+            },
+            {
+              "t_ms": 22.0,
+              "text": "you "
+            },
+            {
+              "t_ms": 22.0,
+              "text": "made. "
+            },
+            {
+              "t_ms": 22.0,
+              "text": "Avoid "
+            },
+            {
+              "t_ms": 22.1,
+              "text": "using "
+            },
+            {
+              "t_ms": 22.1,
+              "text": "jargon "
+            },
+            {
+              "t_ms": 22.1,
+              "text": "or "
+            },
+            {
+              "t_ms": 22.1,
+              "text": "technical "
+            },
+            {
+              "t_ms": 22.1,
+              "text": "terms "
+            },
+            {
+              "t_ms": 22.1,
+              "text": "that "
+            },
+            {
+              "t_ms": 22.1,
+              "text": "might "
+            },
+            {
+              "t_ms": 22.1,
+              "text": "be "
+            },
+            {
+              "t_ms": 22.1,
+              "text": "difficult "
+            },
+            {
+              "t_ms": 22.1,
+              "text": "for "
+            },
+            {
+              "t_ms": 22.1,
+              "text": "others "
+            },
+            {
+              "t_ms": 22.1,
+              "text": "to "
+            },
+            {
+              "t_ms": 22.1,
+              "text": "understand.\n\n2. "
+            },
+            {
+              "t_ms": 22.1,
+              "text": "Include "
+            },
+            {
+              "t_ms": 22.2,
+              "text": "the "
+            },
+            {
+              "t_ms": 22.2,
+              "text": "context: "
+            },
+            {
+              "t_ms": 22.2,
+              "text": "Your "
+            },
+            {
+              "t_ms": 22.2,
+              "text": "commit "
+            },
+            {
+              "t_ms": 22.2,
+              "text": "message "
+            },
+            {
+              "t_ms": 22.2,
+              "text": "should "
+            },
+            {
+              "t_ms": 22.2,
+              "text": "provide "
+            },
+            {
+              "t_ms": 22.2,
+              "text": "context "
+            },
+            {
+              "t_ms": 22.2,
+              "text": "about "
+            },
+            {
+              "t_ms": 22.2,
+              "text": "the "
+            },
+            {
+              "t_ms": 22.2,
+              "text": "changes "
+            },
+            {
+              "t_ms": 22.2,
+              "text": "you "
+            },
+            {
+              "t_ms": 22.2,
+              "text": "made. "
+            },
+            {
+              "t_ms": 22.2,
+              "text": "This "
+            },
+            {
+              "t_ms": 22.2,
+              "text": "can "
+            },
+            {
+              "t_ms": 22.3,
+              "text": "help "
+            },
+            {
+              "t_ms": 22.3,
+              "text": "others "
+            },
+            {
+              "t_ms": 22.3,
+              "text": "understand "
+            },
+            {
+              "t_ms": 22.3,
+              "text": "the "
+            },
+            {
+              "t_ms": 22.3,
+              "text": "purpose "
+            },
+            {
+              "t_ms": 22.3,
+              "text": "of "
+            },
+            {
+              "t_ms": 22.3,
+              "text": "the "
+            },
+            {
+              "t_ms": 22.3,
+              "text": "changes "
+            },
+            {
+              "t_ms": 22.3,
+              "text": "and "
+            },
+            {
+              "t_ms": 22.3,
+              "text": "how "
+            },
+            {
+              "t_ms": 22.3,
+              "text": "they "
+            },
+            {
+              "t_ms": 22.3,
+              "text": "relate "
+            },
+            {
+              "t_ms": 22.3,
+              "text": "to "
+            },
+            {
+              "t_ms": 22.3,
+              "text": "the "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "project. "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "It's "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "important "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "to "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "provide "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "enough "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "context "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "so "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "that "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "others "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "can "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "understand "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "the "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "changes "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "without "
+            },
+            {
+              "t_ms": 22.4,
+              "text": "needing "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "to "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "read "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "the "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "commit "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "message.\n\n3. "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "Use "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "descriptive "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "tags: "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "Git "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "has "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "a "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "feature "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "called "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "tags "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "that "
+            },
+            {
+              "t_ms": 22.5,
+              "text": "allows "
+            },
+            {
+              "t_ms": 22.6,
+              "text": "you "
+            },
+            {
+              "t_ms": 22.6,
+              "text": "to "
+            },
+            {
+              "t_ms": 22.6,
+              "text": "create "
+            },
+            {
+              "t_ms": 22.6,
+              "text": "a "
+            },
+            {
+              "t_ms": 22.6,
+              "text": "unique "
+            },
+            {
+              "t_ms": 22.6,
+              "text": "identifier "
+            },
+            {
+              "t_ms": 22.6,
+              "text": "for "
+            },
+            {
+              "t_ms": 22.6,
+              "text": "each "
+            },
+            {
+              "t_ms": 22.6,
+              "text": "commit. "
+            },
+            {
+              "t_ms": 22.6,
+              "text": "Use "
+            },
+            {
+              "t_ms": 22.6,
+              "text": "descriptive "
+            },
+            {
+              "t_ms": 22.6,
+              "text": "tags "
+            },
+            {
+              "t_ms": 22.6,
+              "text": "that "
+            },
+            {
+              "t_ms": 22.6,
+              "text": "describe "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "the "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "changes "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "you "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "made, "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "such "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "as "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "\"feat\", "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "\"fix\", "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "\"refactor\", "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "or "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "\"docs\". "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "This "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "can "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "help "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "others "
+            },
+            {
+              "t_ms": 22.7,
+              "text": "quickly "
+            },
+            {
+              "t_ms": 22.8,
+              "text": "identify "
+            },
+            {
+              "t_ms": 22.8,
+              "text": "the "
+            },
+            {
+              "t_ms": 22.8,
+              "text": "changes "
+            },
+            {
+              "t_ms": 22.8,
+              "text": "you "
+            },
+            {
+              "t_ms": 22.8,
+              "text": "made "
+            },
+            {
+              "t_ms": 22.8,
+              "text": "and "
+            },
+            {
+              "t_ms": 22.8,
+              "text": "understand "
+            },
+            {
+              "t_ms": 22.8,
+              "text": "the "
+            },
+            {
+              "t_ms": 22.8,
+              "text": "purpose "
+            },
+            {
+              "t_ms": 22.8,
+              "text": "of "
+            },
+            {
+              "t_ms": 22.8,
+              "text": "the "
+            },
+            {
+              "t_ms": 22.8,
+              "text": "changes."
+            }
+          ]
+        },
+        {
+          "kind": "reworded",
+          "prompt": "Share three brief tips for clear git commit messages.",
+          "x_cache": "hit",
+          "provider": "cache",
+          "ttft_ms": 10.5,
+          "total_ms": 11.6,
+          "usage": {
+            "prompt_tokens": 40,
+            "completion_tokens": 172,
+            "total_tokens": 212
+          },
+          "events": [
+            {
+              "t_ms": 10.5,
+              "text": "1. "
+            },
+            {
+              "t_ms": 10.5,
+              "text": "Use "
+            },
+            {
+              "t_ms": 10.6,
+              "text": "clear "
+            },
+            {
+              "t_ms": 10.6,
+              "text": "and "
+            },
+            {
+              "t_ms": 10.6,
+              "text": "concise "
+            },
+            {
+              "t_ms": 10.6,
+              "text": "language: "
+            },
+            {
+              "t_ms": 10.6,
+              "text": "Your "
+            },
+            {
+              "t_ms": 10.6,
+              "text": "commit "
+            },
+            {
+              "t_ms": 10.6,
+              "text": "message "
+            },
+            {
+              "t_ms": 10.6,
+              "text": "should "
+            },
+            {
+              "t_ms": 10.7,
+              "text": "be "
+            },
+            {
+              "t_ms": 10.7,
+              "text": "clear "
+            },
+            {
+              "t_ms": 10.7,
+              "text": "and "
+            },
+            {
+              "t_ms": 10.7,
+              "text": "concise, "
+            },
+            {
+              "t_ms": 10.7,
+              "text": "using "
+            },
+            {
+              "t_ms": 10.7,
+              "text": "simple "
+            },
+            {
+              "t_ms": 10.7,
+              "text": "words "
+            },
+            {
+              "t_ms": 10.7,
+              "text": "and "
+            },
+            {
+              "t_ms": 10.7,
+              "text": "phrases "
+            },
+            {
+              "t_ms": 10.7,
+              "text": "that "
+            },
+            {
+              "t_ms": 10.7,
+              "text": "describe "
+            },
+            {
+              "t_ms": 10.7,
+              "text": "the "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "changes "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "you "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "made. "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "Avoid "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "using "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "jargon "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "or "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "technical "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "terms "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "that "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "might "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "be "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "difficult "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "for "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "others "
+            },
+            {
+              "t_ms": 10.8,
+              "text": "to "
+            },
+            {
+              "t_ms": 10.9,
+              "text": "understand.\n\n2. "
+            },
+            {
+              "t_ms": 10.9,
+              "text": "Include "
+            },
+            {
+              "t_ms": 10.9,
+              "text": "the "
+            },
+            {
+              "t_ms": 10.9,
+              "text": "context: "
+            },
+            {
+              "t_ms": 10.9,
+              "text": "Your "
+            },
+            {
+              "t_ms": 10.9,
+              "text": "commit "
+            },
+            {
+              "t_ms": 10.9,
+              "text": "message "
+            },
+            {
+              "t_ms": 10.9,
+              "text": "should "
+            },
+            {
+              "t_ms": 10.9,
+              "text": "provide "
+            },
+            {
+              "t_ms": 10.9,
+              "text": "context "
+            },
+            {
+              "t_ms": 10.9,
+              "text": "about "
+            },
+            {
+              "t_ms": 10.9,
+              "text": "the "
+            },
+            {
+              "t_ms": 10.9,
+              "text": "changes "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "you "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "made. "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "This "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "can "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "help "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "others "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "understand "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "the "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "purpose "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "of "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "the "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "changes "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "and "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "how "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "they "
+            },
+            {
+              "t_ms": 11.0,
+              "text": "relate "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "to "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "the "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "project. "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "It's "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "important "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "to "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "provide "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "enough "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "context "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "so "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "that "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "others "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "can "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "understand "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "the "
+            },
+            {
+              "t_ms": 11.1,
+              "text": "changes "
+            },
+            {
+              "t_ms": 11.2,
+              "text": "without "
+            },
+            {
+              "t_ms": 11.2,
+              "text": "needing "
+            },
+            {
+              "t_ms": 11.2,
+              "text": "to "
+            },
+            {
+              "t_ms": 11.2,
+              "text": "read "
+            },
+            {
+              "t_ms": 11.2,
+              "text": "the "
+            },
+            {
+              "t_ms": 11.2,
+              "text": "commit "
+            },
+            {
+              "t_ms": 11.2,
+              "text": "message.\n\n3. "
+            },
+            {
+              "t_ms": 11.2,
+              "text": "Use "
+            },
+            {
+              "t_ms": 11.2,
+              "text": "descriptive "
+            },
+            {
+              "t_ms": 11.2,
+              "text": "tags: "
+            },
+            {
+              "t_ms": 11.2,
+              "text": "Git "
+            },
+            {
+              "t_ms": 11.2,
+              "text": "has "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "a "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "feature "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "called "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "tags "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "that "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "allows "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "you "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "to "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "create "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "a "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "unique "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "identifier "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "for "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "each "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "commit. "
+            },
+            {
+              "t_ms": 11.3,
+              "text": "Use "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "descriptive "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "tags "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "that "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "describe "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "the "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "changes "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "you "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "made, "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "such "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "as "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "\"feat\", "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "\"fix\", "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "\"refactor\", "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "or "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "\"docs\". "
+            },
+            {
+              "t_ms": 11.4,
+              "text": "This "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "can "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "help "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "others "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "quickly "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "identify "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "the "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "changes "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "you "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "made "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "and "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "understand "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "the "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "purpose "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "of "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "the "
+            },
+            {
+              "t_ms": 11.5,
+              "text": "changes."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

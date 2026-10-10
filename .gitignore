@@ -17,3 +17,6 @@ dump.rdb
 
 # Local model registry (may contain internal hostnames); models.example.toml is the template
 models.toml
+
+# Static demo build output (GitHub Pages builds it in CI)
+frontend/dist-demo/

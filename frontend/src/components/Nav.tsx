@@ -1,12 +1,19 @@
 import { NavLink } from "react-router-dom";
 
-const links = [
-  { to: "/", label: "Dashboard" },
-  { to: "/playground", label: "Playground" },
-  { to: "/requests", label: "Requests" },
-  { to: "/api-keys", label: "API Keys" },
-  { to: "/benchmarks", label: "Benchmarks" },
-];
+import { REPO_URL, STATIC_DEMO } from "../demo";
+
+const links = STATIC_DEMO
+  ? [
+      { to: "/", label: "Benchmarks" },
+      { to: "/playground", label: "Playground (replay)" },
+    ]
+  : [
+      { to: "/", label: "Dashboard" },
+      { to: "/playground", label: "Playground" },
+      { to: "/requests", label: "Requests" },
+      { to: "/api-keys", label: "API Keys" },
+      { to: "/benchmarks", label: "Benchmarks" },
+    ];
 
 export default function Nav() {
   return (
@@ -26,6 +33,9 @@ export default function Nav() {
             {link.label}
           </NavLink>
         ))}
+        {STATIC_DEMO && (
+          <a href={REPO_URL} className="text-slate-400 hover:text-slate-200">GitHub ↗</a>
+        )}
       </div>
     </nav>
   );

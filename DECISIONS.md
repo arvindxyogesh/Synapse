@@ -768,3 +768,52 @@ depends on colour alone. On phones the end-of-line labels are dropped (they
 squeezed the plot to a third of the card) and the legend carries identity.
 Checked visually at desktop and 375 px widths; the nav now scrolls sideways
 on narrow screens instead of overflowing.
+
+---
+
+## D18. Making it live: a free static demo on GitHub Pages, with a replayed gateway
+
+**Date:** 2026-10-10
+
+**Options considered** (the GPU itself can't stay on: see PLAN.md §4):
+- **Great Lakes.** Rejected. Compute nodes aren't reachable from the
+  internet, jobs on this account end after 8 hours, login nodes may not run
+  services, and tunnelling a public endpoint out of a university cluster
+  would likely break its acceptable-use policy. It would also spend a class
+  allocation on hosting.
+- **A small CPU server** (about $5–8/month) or Oracle's free tier (needs a
+  new account with a card). Both would give a truly live gateway. Deferred:
+  not needed for what reviewers look at, and both cost money or a new
+  account.
+- **GitHub Pages: free, no new account.** Chosen.
+
+**What's published.** The same React dashboard, built with
+`vite build --mode demo`:
+- **Benchmarks** is the landing page (it never needed a server).
+- **The Playground replays recorded traffic** instead of calling a gateway.
+- **Pages that need live data** (Dashboard, Requests, API Keys) show a short
+  note with a link to run it yourself.
+
+URLs use `#/route` because GitHub Pages only serves files and would 404 on a
+deep link like `/playground`. The self-hosted build is unchanged; the demo
+code is dropped from it at build time.
+
+**How the replay stays honest.**
+- `scripts/record_replay.py` sends real streaming requests through a real
+  gateway (here: Ollama with `qwen2.5:0.5b` on a MacBook, real
+  `sentence-transformers` embedder, Redis Stack) and saves each chunk with
+  the time it arrived. Playback reuses those exact times.
+- Nothing is edited. The tiny model's answers are weak in places, and the
+  page says so; the point is what the gateway does (miss: wait for the model;
+  hit: about 10 ms).
+- The recorder refuses mock output and records from committed code (tests
+  check `dirty: false`). One unrecorded warm-up request absorbs model
+  loading, and that's disclosed in the provenance.
+- The first attempt recorded an 8-second first token (cold start), which
+  would have misrepresented a running gateway. That's why the warm-up exists.
+- What the semantic cache decided for each reworded question is recorded
+  as-is. All three were hits.
+
+**Cost.** $0. It isn't *live*, and the banner says so on every page that
+could be mistaken for live. A live endpoint can be added later without
+changing any of this.
