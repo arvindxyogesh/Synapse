@@ -62,3 +62,21 @@ def test_markdown_renders_every_section(summary):
                     "## Speed, through the Synapse gateway", "## Run-to-run spread", "## Card-to-card check"):
         assert heading in md
     assert "Do not edit by hand" in md
+
+
+README = Path(__file__).resolve().parents[2] / "README.md"
+
+
+def test_readme_results_block_matches_generated(summary):
+    """The README's results tables are generated; this fails if anyone edits
+    them by hand or the data changes without re-running summarize."""
+    text = README.read_text()
+    block = text[text.index(summarize.README_BEGIN) + len(summarize.README_BEGIN):text.index(summarize.README_END)]
+    assert block.strip() == summarize.readme_results(summary).strip()
+
+
+def test_readme_results_numbers_trace_to_raw_files(summary):
+    block = summarize.readme_results(summary)
+    awq = json.loads((PERF / "qwen2.5-7b-awq" / "perf" / "summary.json").read_text())
+    c64 = next(r for r in awq if r["target"] == "direct" and r["concurrency"] == 64 and r["repeat"] == 0)
+    assert f"{c64['aggregate_output_tok_s']:,.0f} tok/s" in block

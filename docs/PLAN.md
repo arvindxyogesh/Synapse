@@ -3,6 +3,19 @@
 Status: **approved 2026-10-08** with all recommendations: Qwen2.5-7B-Instruct (BF16, AWQ, GPTQ-Int8), one L40S 48 GB, live demo option B, and removal of README numbers that have no raw data. Spending money and creating accounts still need explicit approval at each step.
 Baseline checked on 2026-10-08: `main` @ 546778a, `ruff` clean, 66/66 backend tests pass (Python 3.12), GitHub CI green.
 
+
+## Status (2026-10-10): all milestones done. Where reality differed from the plan
+
+| Milestone | Outcome | Deviation from the plan, and why |
+|---|---|---|
+| M1 gateway fixes | Done (PR #2) | — |
+| M2 registry, TTFT, `ignore_eos` | Done (PR #3) | — |
+| M3 harness + GSM8K + dry run | Done (PR #4) | The dry run found two measurement traps (D12, D13). |
+| M4 GPU runs | Done (PR #5), about $2 total | **A40 on U-M Great Lakes instead of an L40S on Modal/RunPod.** Same 48 GB class. The Great Lakes job gets the whole GPU for a few dollars, and Modal required a card and had queueing. The runs also found and fixed a gateway bug at 64 concurrent requests (D16). |
+| M5 Benchmarks page | Done (PR #6) | — |
+| M6 live | Done (PR #7) | **Static GitHub Pages demo with a replayed gateway instead of a VPS** (D18): free, no new accounts. A live gateway can still be added. |
+| M7 README | Done | Results tables are generated from the raw data and pinned by a test. Older numbers without data in the repo were removed. |
+
 ---
 
 ## 0. What the code actually does vs. your description

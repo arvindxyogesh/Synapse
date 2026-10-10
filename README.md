@@ -1,288 +1,115 @@
 # Synapse
 
 [![CI](https://github.com/arvindxyogesh/Synapse/actions/workflows/ci.yml/badge.svg)](https://github.com/arvindxyogesh/Synapse/actions/workflows/ci.yml)
+[![Demo](https://img.shields.io/badge/demo-GitHub%20Pages-2ea44f)](https://arvindxyogesh.github.io/Synapse/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A self-hosted LLM gateway you drop in front of your app with a one-line
-change. Point the **real `openai` SDK** (Python or JS, unmodified) at your
-Synapse instance instead of api.openai.com, and you get semantic response
-caching, cost/latency tracking, per-key rate limits and quotas, and a live
-observability dashboard — for open-weight models served locally, for free,
-fully self-hosted, no data leaving your own infrastructure. The serving
-backend is pluggable (`PROVIDER=ollama|vllm`): [Ollama](https://ollama.com)
-runs on CPU with zero setup and is the default demo path, or point it at
-[vLLM](https://github.com/vllm-project/vllm) for GPU-served throughput
-(continuous batching, PagedAttention) once you have a real workload.
+**Synapse is a self-hosted, OpenAI-compatible gateway for open-weight LLMs:
+point the unmodified `openai` SDK at it and get semantic response caching,
+per-key rate limits and quotas, cost and latency tracking, and a dashboard,
+in front of Ollama or vLLM.** This repo also measures what 4-bit and 8-bit
+weight quantization buys and costs when serving Qwen2.5-7B through vLLM
+behind the gateway, on a real GPU, with every number reproducible from data
+committed here.
 
-```python
-import openai
+### ▶ [Live demo: arvindxyogesh.github.io/Synapse](https://arvindxyogesh.github.io/Synapse/)
 
-client = openai.OpenAI(
-    api_key="llmgw_...",                    # a Synapse gateway key, see Quickstart
-    base_url="http://localhost:8000/v1",    # <- the only line that changes
-)
-
-resp = client.chat.completions.create(
-    model="llama3",
-    messages=[{"role": "user", "content": "hello"}],
-)
-print(resp.choices[0].message.content)
-# send the exact same request again: cost $0, latency in single-digit ms,
-# served from Synapse's semantic cache instead of hitting the model again
-```
-
-That's not a claim about shape-compatibility — `tests/test_openai_compat.py`
-runs the actual `openai` Python package against the app and asserts on its
-typed response objects, both for regular calls and streaming.
-
-## What makes this different from LiteLLM Proxy / Portkey / Helicone
-
-Those are mature, production-grade projects — this is a from-scratch,
-fully self-hosted reference implementation, not a drop-in replacement for
-any of them. Where it's distinctive: its semantic cache doesn't trust a
-single fixed similarity threshold. A **closed-loop controller**
-continuously shadow-verifies a sample of cache hits against an independent
-LLM-judge and adjusts the threshold online to hold a target false-positive
-rate — see [Adaptive cache threshold](#adaptive-cache-threshold-self-tuning-correctness)
-below, including honestly-reported results (what held up, what didn't,
-bugs found along the way) rather than just a claim that it works.
-
-| | Synapse | LiteLLM Proxy / Portkey / Helicone |
-|---|---|---|
-| OpenAI-compatible endpoint | ✅ | ✅ |
-| Self-hosted, open source | ✅ | Partially (OSS core + hosted/paid tiers) |
-| Semantic response caching | ✅ (ANN vector search) | Some support exact-match caching |
-| Self-tuning cache correctness | ✅ | ❌ (not aware of this in any of them) |
-| Maturity / production track record | Portfolio-stage | Production-grade, widely deployed |
-
-```
-                 ┌─────────────┐        ┌──────────────┐
-  client  ─────▶ │   FastAPI    │──────▶ │ Ollama / vLLM │  (local, free,
- (API key)       │   gateway    │        │ open models   │   open-weight,
-                 │ rate limits  │◀───────┤ llama3/mistral│  PROVIDER=...)
-                 │ + quotas     │        └──────────────┘
-                 └───┬──────┬───┘
-                     │      │
-         semantic    │      │  request/cost/latency log
-         cache (ANN) ▼      ▼
-                 ┌────────┐ ┌────────────┐
-                 │ Redis  │ │ Postgres   │  (Alembic-managed schema)
-                 │ +vector│ └────────────┘
-                 └────────┘      ▲
-                     ▲            │ stats API
-                     │            │
-                 ┌────────────────┐
-                 │ React dashboard │  live charts, chat playground
-                 │  (Vite + TS)    │  (streaming), API key management
-                 └────────────────┘
-```
-
-## Screenshots
+The demo is a static site (no server, no GPU), so it shows **recorded**
+results: the benchmark dashboard, and a Playground that replays real requests
+through the gateway with their original timing. To run the live gateway, see
+[Quickstart](#quickstart).
 
 <table>
-<tr><td width="50%">
-
-**Dashboard** — live request volume, cache hit rate, cost saved, latency,
-and the adaptive cache-threshold panel (per-model threshold, estimated
-false-positive rate vs. target, verified sample count).
-
-<img src="docs/screenshots/dashboard.png" alt="Synapse dashboard" width="100%">
-
-</td><td width="50%">
-
-**Playground** — chat through the gateway directly (streaming or not);
-`cache hit` / `provider: ...` is shown per response, live.
-
-<img src="docs/screenshots/playground.png" alt="Synapse playground" width="100%">
-
-</td></tr>
+<tr>
+<td width="58%"><img src="docs/screenshots/benchmarks.png" alt="Benchmarks page: speed-up tiles and a throughput-vs-concurrency chart for 16-bit, 8-bit and 4-bit variants"></td>
+<td width="42%"><img src="docs/screenshots/replay.gif" alt="Replay Playground: a cache miss answered by the model in 445 ms, then the same question and a reworded one served from the semantic cache in about 10 ms"></td>
+</tr>
+<tr>
+<td>Benchmarks page (from the recorded GPU runs)</td>
+<td>Replay: a miss, then an exact and a reworded cache hit</td>
+</tr>
 </table>
 
-**API Keys** — create/revoke gateway keys, set or clear a per-minute rate
-limit and monthly USD quota, see live spend against it.
+## Quantization results
 
-<img src="docs/screenshots/api-keys.png" alt="Synapse API keys page" width="70%">
+Qwen2.5-7B-Instruct at three weight precisions (the Qwen team's own
+checkpoints, pinned revisions), served one at a time by vLLM on the same
+whole GPU with identical settings, measured through the gateway and directly.
 
-## How the caching works
+<!-- BEGIN GENERATED RESULTS (python -m synapse_bench.summarize --readme ...) -->
+- **4-bit decodes 3.1× faster than 16-bit for a single request**, but the gap narrows to 1.9× in throughput at 64 concurrent requests.
+- **No accuracy difference is detectable** on the 1,319 GSM8K test questions (paired McNemar p ≥ 0.18 for both quantized variants).
+- **Smaller weights buy capacity, not just speed:** the KV cache left over fits 155 concurrent 4K-token requests instead of 114.
+- **The gateway is cheap at low load and costly at high load:** about 30–32 ms extra time-to-first-token for a single request, but 14–21% of throughput lost at 64 concurrent requests.
 
-Every call to `POST /v1/chat/completions` is checked against a semantic
-cache before it reaches the model: an exact-hash check first, then a
-vector similarity search against recent embeddings for that model. A cache
-hit skips inference entirely — zero cost, near-zero latency — and the
-dashboard shows exactly how much that's saving in real time. Responses can
-also be streamed token-by-token (SSE), and gateway keys can carry a
-per-minute rate limit and a monthly cost quota.
+| Variant | Weights | Max concurrent 4K-token requests | Decode speed, 1 request | Throughput, 64 requests | GSM8K accuracy [95% CI] | vs 16-bit |
+|---|---|---|---|---|---|---|
+| 16-bit (BF16) | 14.3 GiB | 114 | 35.8 tok/s | 1,463 tok/s | 91.7% [90.0%, 93.0%] | baseline |
+| 8-bit (GPTQ) | 8.3 GiB | 142 | 69.5 tok/s | 2,101 tok/s | 91.9% [90.3%, 93.2%] | +0.2 pts (p = 0.71) |
+| 4-bit (AWQ) | 5.3 GiB | 155 | 110.6 tok/s | 2,746 tok/s | 90.7% [89.0%, 92.1%] | -1.0 pts (p = 0.18) |
 
-## Adaptive cache threshold (self-tuning correctness)
+**Gateway overhead** (same requests through Synapse vs. straight to vLLM):
 
-A semantic cache has one structural risk: at a fixed similarity threshold,
-a "close enough" match can be *wrong* -- e.g. reusing the answer to "How do
-I cancel my subscription?" for "How do I pause my subscription instead of
-cancelling?" is a real, damaging false positive, not just a missed
-optimization. Turning the threshold up to be safe throws away hit rate;
-turning it down to get more hits risks more of these.
+| Variant | TTFT p50, 1 request | TTFT p50, 64 requests | Throughput lost, 1 / 4 / 16 / 64 requests |
+|---|---|---|---|
+| 16-bit (BF16) | 36 → 68 ms | 508 → 2,352 ms | 1% / 1% / 1% / 14% |
+| 8-bit (GPTQ) | 24 → 54 ms | 808 → 2,105 ms | 1% / 2% / 3% / 18% |
+| 4-bit (AWQ) | 18 → 48 ms | 654 → 2,140 ms | 1% / 3% / 6% / 21% |
 
-Rather than pick one fixed threshold and hope, `app/threshold_controller.py`
-tunes it online, per model, with a small closed-loop controller:
+*NVIDIA A40, vLLM 0.31.0, Great Lakes (U-M). Speed: run `2026-10-09T1514_perf` (commit `00f5b3a`, 2026-10-09); accuracy and memory: run `2026-10-09T0124_full` (commit `4f42b29`). Every request generates exactly 256 tokens; 100 measured requests per level. Full tables, spread across repeats, and a second-GPU check: [`benchmarks/results/RESULTS.md`](benchmarks/results/RESULTS.md).*
+<!-- END GENERATED RESULTS -->
 
-1. A sample of cache hits (`SHADOW_VERIFY_SAMPLE_RATE`, default 20%) is
-   shadow-verified in the background, after the response has already been
-   served (so it never adds latency): an **independent LLM-judge**
-   (`app/judge.py`) is asked whether the prompt that originally produced
-   the cached response and the prompt that just hit it are actually
-   asking the same thing. This is a genuinely different signal from the
-   embedding similarity that produced the hit in the first place, so it
-   catches errors the embedding model itself missed. It falls back to a
-   deterministic stopword-filtered token-overlap heuristic when there's no
-   real model to ask (mock mode / configured provider unreachable) -- same
-   real-model-with-deterministic-fallback shape as `app/embeddings.py`, so
-   the whole thing is testable and demoable without a GPU.
-2. An EWMA of the observed false-positive rate drives the threshold up
-   (stricter) when it's above target, or back down (looser, more hits)
-   once it's comfortably under target -- in small, bounded, cooldown-gated
-   steps, the same "hold an operating metric near a target" shape as an
-   SLO-adaptive controller, applied here to cache *correctness* instead of
-   latency.
+The tables above are generated by `benchmarks/synapse_bench/summarize.py`
+from the raw result folders, and a test fails if they're edited by hand or go
+stale. The method is [below](#how-the-benchmark-works).
 
-State and results are visible at `GET /v1/stats/cache-threshold` and on
-the dashboard.
+## Architecture
 
-### Honest status of the evidence so far
+```mermaid
+flowchart LR
+    client["Client<br/>(openai SDK, curl, dashboard)"] -->|"POST /v1/chat/completions<br/>Bearer gateway key"| gw
 
-`backend/scripts/benchmark.py --rounds` (see its docstring to reproduce)
-demonstrates the *mechanism* end-to-end -- shadow verification firing,
-false positives being detected, the threshold moving in response, and
-recovering -- but every number produced against this environment used
-`MOCK_MODE` and the **hash-embedding fallback**, not a real embedding
-model: `sentence-transformers` needs to download weights from
-huggingface.co on first use, which this sandbox's network policy blocks
-outright (confirmed directly, not assumed -- see `app/embeddings.py`,
-which now logs a warning and reports its active backend on `GET /health`
-specifically because this failure used to be silent). That matters,
-concretely: the benchmark also reports precision/recall on the
-**"novel-only"** subset -- excludes exact-repeat prompts, which trivially
-hit and inflate the headline numbers once a small traffic universe
-saturates -- and on that harder, honest slice, the hash fallback's recall
-on genuine differently-worded paraphrases collapses to roughly 0-40%. The
-bag-of-words hash embedder mostly can't tell that "How do I reset my
-password?" and "I forgot my password, how can I reset it?" mean the same
-thing; only close-to-verbatim repeats reliably hit.
+    subgraph gw["Synapse gateway (FastAPI)"]
+        direction TB
+        auth["Auth + rate limits + quotas"] --> cache{"Semantic cache<br/>exact match, then ANN"}
+        cache -->|miss| route["Model registry<br/>(name → backend)"]
+        cache -.->|"sampled hits"| judge["Shadow verification<br/>(LLM judge → adaptive threshold)"]
+    end
 
-So: the control loop (shadow verification catching real errors, the
-threshold correctly tightening/loosening in response) is verified and
-reproducible. Whether it holds up with *real* embeddings and a *real*
-LLM-judge -- where the interesting failure modes are different (judge
-noise/inconsistency, real embeddings' own precision/recall curve) -- is
-not yet measured and needs a real network + a real Ollama-served model,
-i.e. GPU is optional but real network access and a real model are not.
+    route --> vllm["vLLM<br/>(GPU, e.g. 16/8/4-bit variants)"]
+    route --> ollama["Ollama<br/>(CPU / laptop)"]
+    cache <--> redis[("Redis Stack<br/>vectors + counters")]
+    gw --> pg[("Postgres<br/>request log, keys")]
+    dash["React dashboard<br/>(Vite, Recharts)"] -->|"/v1/stats/*"| gw
+```
 
-Two real bugs were also found and fixed while building this (not just the
-network-blocked one above): an EWMA tuned too fast (alpha=0.3, ~3-sample
-memory) silently underestimated a real ~15% false-positive rate down to
-~0%, and the benchmark harness's own ground truth mislabeled repeated
-confuser prompts as false positives. Both fixed in the current code.
-
-### Update: real GPU + real model results
-
-Re-ran on real hardware (8x H200, real network, real `llama3.1:8b` via
-Ollama, real `sentence-transformers` embeddings, real LLM-judge) instead
-of the mock/hash-fallback setup above. `GET /health` confirmed
-`"embedder_backend": "sentence-transformers"` -- the real model, not the
-fallback.
-
-- **Cold start vs. warm inference matters a lot and is easy to misreport.**
-  The very first request took 53.4s (one-time model load into VRAM); the
-  next three distinct (uncached) prompts averaged ~470ms. Only the warm
-  number is representative -- reporting the cold-start figure as "typical
-  latency" would have been misleading.
-- **Precision held up under a real LLM-judge**, not just the heuristic
-  fallback: 98-100% across 6 rounds of a real convergence run, with the
-  threshold correctly climbing (0.60 → 0.85) in response to real
-  shadow-verified false positives.
-- **Recall on genuinely-novel paraphrases (the `novel_only` metric) was
-  low and declining under the default target false-positive rate (5%)**:
-  70% → 31% → 21% → 0% → 12.5% → 12.5% across rounds. This is the
-  precision/recall tradeoff working as intended, not a bug -- holding a
-  tight false-positive budget costs recall on real paraphrases -- but it
-  means headline numbers like "122x speedup" from that run are earned
-  substantially by exact-repeat traffic, not broad semantic
-  generalization. A less repetitive production workload would likely see
-  real hit rate (and therefore real savings) meaningfully lower than that.
-- **An open question surfaced, not yet resolved**: aggregate cache-miss
-  latency in that run (1671ms) was ~3.5x higher than the manually-measured
-  warm baseline (~470ms), while `SHADOW_VERIFY_SAMPLE_RATE` was set to
-  100% for a fast convergence demo. Leading hypothesis: background
-  LLM-judge calls (real Ollama inference) were competing with regular
-  requests for the same model-serving slot, so "background" shadow
-  verification wasn't actually latency-free once it shared a bottleneck
-  with the request path. A follow-up run at the default 20% sampling rate
-  should confirm or rule this out -- not yet done as of this writing.
-
-### Update: real vLLM results (`PROVIDER=vllm`)
-
-Ran the same kind of validation against a real vLLM server instead of
-Ollama, on an H200-class GPU on the same machine as the run above, serving
-`Qwen/Qwen2.5-1.5B-Instruct` via `vllm serve` (see the environment note
-below for why not Docker), fronted by the gateway with `PROVIDER=vllm`.
-
-**End-to-end wiring confirmed manually first**: a `/v1/chat/completions`
-call returned `"provider":"vllm"`, a real completion, real usage (30
-prompt / 10 completion tokens), and 4396ms latency (first-request vLLM
-warmup -- the same cold-start effect noted above, just smaller since the
-model was already resident from `vllm serve` startup). The identical
-request repeated came back `"provider":"cache"`, `"cached":true`,
-`cost_usd: 0.0`, 1.77ms -- roughly a 2500x latency drop on that one pair.
-
-**`backend/scripts/benchmark.py`, 150 requests, single round, default
-config** (no stress-test threshold/sampling overrides, unlike the 6-round
-Ollama convergence demo above):
-
-- Precision 100%, recall 74%, F1 85.1% (TP=77, FP=0, FN=27, TN=46);
-  adaptive threshold moved 0.92 → 0.910 (14 shadow-verified samples, 0
-  false positives found).
-- **Novel-only recall collapsed to 12.9%** (4 of 31 novel true positives)
-  -- the same shape as the Ollama run's finding above, now reproduced with
-  a different serving engine *and* a much smaller model (1.5B vs 8B):
-  headline hit-rate numbers are earned substantially by exact-repeat
-  traffic, not broad semantic generalization.
-- Avg cache-miss latency 621ms, cache-hit 34ms (18.3x speedup on a hit),
-  51.3% cost reduction.
-
-**An open question, stated rather than smoothed over**: cache-miss latency
-here (621ms, a 1.5B model on vLLM) was *higher* than the Ollama run's warm
-baseline (~470ms, an 8B model) despite the much smaller model. This run
-doesn't distinguish between the plausible explanations -- vLLM engine
-overhead at this traffic pattern, a different physical GPU than the one
-used for the Ollama run, warmup not fully settled when the benchmark
-started -- so it's reported as an open question, not a claim either engine
-is faster. A controlled back-to-back comparison (same model, same GPU,
-both engines) is the natural follow-up and hasn't been done.
-
-**Environment note**: no Docker was available for this run (no root access
-on the shared host, and the daemon happened to be down) -- vLLM ran as a
-plain `vllm serve` process instead of the `docker-compose.yml` service,
-and Redis was swapped for `backend/scripts/run_fake_redis.py`'s
-pure-Python fake server. Both are fallback paths this repo already
-documents (see `docker compose`'s optional `vllm` profile and the
-Stack table's SQLite note above), not special accommodations invented for
-this run.
-
-## Stack
-
-| Layer | Tech |
-|---|---|
-| Model serving | Pluggable via `PROVIDER`: [Ollama](https://ollama.com) (default, CPU) or [vLLM](https://github.com/vllm-project/vllm) (GPU, OpenAI-compatible), with an opt-in mock-provider fallback (`MOCK_FALLBACK`) |
-| Backend | FastAPI, SQLAlchemy, Alembic |
-| Cache | Redis, with ANN vector search (Query Engine / RediSearch) when available, falling back to a linear scan otherwise |
-| Cache correctness | Adaptive per-model similarity threshold, tuned online by LLM-judge shadow verification |
-| Embeddings | [sentence-transformers](https://www.sbert.net/) (local, falls back to a hashing embedding if unavailable) |
-| Storage | Postgres (SQLite for local dev without Docker) |
-| Frontend | React + TypeScript (Vite), Tailwind CSS, Recharts |
-| CI | GitHub Actions (ruff + pytest, eslint + tsc + vite build) |
+- **One-line integration.** The real `openai` package works unmodified
+  (`base_url="http://localhost:8000/v1"`). That's tested by running the SDK
+  itself against the app, for regular calls, streaming, `models.list()`, and
+  `stream_options.include_usage`.
+- **Semantic cache.** An exact-hash lookup, then vector search (Redis HNSW,
+  with a linear-scan fallback) over `sentence-transformers` embeddings. Hits
+  cost $0 and come back in milliseconds. A per-request header,
+  `x-synapse-cache: bypass`, turns it off.
+- **Self-tuning cache threshold.** A sample of cache hits is checked in the
+  background by an independent LLM judge ("do these two questions have the
+  same answer?"), and a small controller moves the similarity threshold to
+  hold a target false-positive rate. It's unit-tested; its behaviour with a
+  real judge at scale hasn't been measured in this repo (see
+  [Known limitations](#known-limitations)).
+- **Several backends at once.** A model registry (`models.toml`) gives each
+  model name its own backend, which is how the three quantized variants sit
+  behind one gateway.
+- **Fails loudly.** A failing backend returns HTTP 502 and is logged as an
+  error, never answered by a fake reply
+  ([D1](DECISIONS.md#d1-a-failing-backend-returns-an-error-not-a-fake-answer)).
+- **Per-key limits.** Requests per minute and a monthly USD quota (429s with
+  `Retry-After`), with spend, latency, time-to-first-token and cache hit rate
+  on the dashboard.
 
 ## Quickstart
 
-### Option A — Docker Compose (Postgres + Redis + backend + frontend)
+**Docker Compose** (Postgres, Redis Stack, gateway, dashboard):
 
 ```bash
 cp .env.example .env
@@ -290,204 +117,150 @@ docker compose up --build
 ```
 
 - Dashboard: http://localhost:5173
-- API: http://localhost:8000 (docs at `/docs`)
+- API: http://localhost:8000 (OpenAPI docs at `/docs`)
 
-`docker compose` runs `redis/redis-stack-server`, which bundles the Query
-Engine module the semantic cache uses for ANN vector search, and the
-backend image runs `alembic upgrade head` on startup before serving traffic.
+With no model running, the compose stack answers with labelled mock replies
+(`MOCK_FALLBACK=true`), so everything can be clicked through. For real
+answers, run `ollama pull qwen2.5:0.5b && ollama serve`. For a GPU, set
+`PROVIDER=vllm` and run `vllm serve <model>` (or
+`docker compose --profile vllm up`).
 
-If the configured provider isn't running, the compose stack serves mock
-responses instead of erroring out (`MOCK_FALLBACK=true`, the compose
-default) — you can still exercise the whole cache/cost/dashboard pipeline
-with zero model setup. Outside compose the fallback is off by default and a
-failing backend returns HTTP 502, logged as an error row. To use real
-open-weight models with the default backend: `ollama pull llama3` then
-`ollama serve`.
-
-To use vLLM instead (needs a CUDA GPU): set `PROVIDER=vllm` in `.env`, then
-either run `vllm serve <model> --port 8001` yourself, or bring up the
-optional GPU-profiled compose service: `docker compose --profile vllm up`
-(set `VLLM_MODEL` in `.env` to pick the model; defaults to a small
-Llama 3.2 instruct model). vLLM speaks the OpenAI chat-completions format
-natively, so `VLLMProvider` (`app/providers.py`) is close to passthrough —
-see it for exact-usage-token reporting via `stream_options.include_usage`.
-
-### Option B — run backend/frontend directly
+**Try it:**
 
 ```bash
-# backend
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-alembic upgrade head   # creates ./gateway.db (SQLite) via migrations
-uvicorn app.main:app --reload
+# 1. create a gateway key (rate limit and monthly quota are optional)
+curl -X POST localhost:8000/v1/admin/keys -H "x-admin-key: change-me-admin-key" \
+  -H "Content-Type: application/json" -d '{"name": "dev", "rate_limit_per_minute": 60, "monthly_quota_usd": 5}'
 
-# frontend (separate terminal)
-cd frontend
-npm install
-npm run dev
+# 2. call it with the real OpenAI SDK -- only base_url changes
+python - <<'PY'
+import openai
+client = openai.OpenAI(api_key="llmgw_...", base_url="http://localhost:8000/v1")
+for _ in range(2):  # the second call is a cache hit: $0, milliseconds
+    r = client.chat.completions.with_raw_response.create(
+        model="qwen2.5:0.5b", messages=[{"role": "user", "content": "What is a semantic cache?"}])
+    print(r.headers["x-cache"], r.parse().choices[0].message.content[:60])
+PY
 ```
 
-Plain `redis-server` (no Query Engine module) works fine here too — the
-cache detects the module is missing and transparently falls back to a
-linear-scan similarity search.
+**Without Docker:** `cd backend && pip install -r requirements.txt && alembic upgrade head && uvicorn app.main:app`
+(SQLite by default; plain `redis-server` works, and the cache falls back to
+a linear scan), then `cd frontend && npm install && npm run dev`.
 
-### Try it
+**Serving several variants:** copy `models.example.toml` to `models.toml`,
+point `MODEL_REGISTRY_PATH` at it, and clients choose by name
+(`"model": "qwen2.5-7b-awq"`).
 
-```bash
-# 1. create a gateway API key (ADMIN_KEY defaults to "change-me-admin-key").
-#    rate_limit_per_minute / monthly_quota_usd are both optional (omit or
-#    null = unlimited).
-curl -X POST localhost:8000/v1/admin/keys \
-  -H "x-admin-key: change-me-admin-key" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "local-dev", "rate_limit_per_minute": 60, "monthly_quota_usd": 5}'
-# -> {"api_key": "llmgw_..."}
+## How the benchmark works
 
-# 2. send a chat completion through the gateway
-curl -X POST localhost:8000/v1/chat/completions \
-  -H "Authorization: Bearer llmgw_..." \
-  -H "Content-Type: application/json" \
-  -d '{"model": "llama3", "messages": [{"role": "user", "content": "hello"}]}'
+Full details: [`benchmarks/README.md`](benchmarks/README.md). The reasoning
+behind each choice: [DECISIONS.md](DECISIONS.md) D8–D17.
 
-# 3. send the exact same request again -> "cached": true, cost_usd: 0, x-cache: hit
+| | |
+|---|---|
+| **Model** | Qwen2.5-7B-Instruct: BF16, GPTQ-Int8 and AWQ (4-bit), all first-party checkpoints at pinned revisions. |
+| **Hardware** | One whole NVIDIA A40 (48 GB) on U-M's Great Lakes cluster. All three variants run back to back in **one job, on one physical GPU**, with identical vLLM settings (same memory budget and max length, prefix caching off). |
+| **Load** | Closed loop at 1, 4, 16 and 64 concurrent requests, 100 measured requests per level after 10 warm-up, sent through the gateway (cache bypassed) and directly to vLLM. Every request generates **exactly 256 tokens** (`ignore_eos`), so variants are compared on identical work. |
+| **Metrics** | Time to first token, end-to-end latency (p50/p95), per-request decode speed, aggregate throughput, requests/s, and cost per 1K tokens at the job's actual billed rate. Failed requests are counted, never dropped. |
+| **Memory** | Weight memory and KV-cache capacity read from vLLM's own log. `nvidia-smi` alone shows about 90% used for every variant, because vLLM reserves memory up front ([D11](DECISIONS.md)). |
+| **Quality** | All 1,319 GSM8K test questions, greedy decoding, exact match on the final `\boxed{}` answer, 95% Wilson intervals, and a paired McNemar test against 16-bit. |
+| **Checks** | A run is marked invalid if any response skipped the cache bypass, came from the mock or the cache, or lacked token counts. It warns if the backend reused cached prompt tokens, or if the load generator's CPU was saturated. For the two variants measured in two separate full runs, on two different A40s, direct throughput matched within 0.7%. |
 
-# 4. or stream it token-by-token (Server-Sent Events, OpenAI-chunk shaped)
-curl -N -X POST localhost:8000/v1/chat/completions \
-  -H "Authorization: Bearer llmgw_..." \
-  -H "Content-Type: application/json" \
-  -d '{"model": "llama3", "messages": [{"role": "user", "content": "hello"}], "stream": true}'
+Total GPU spend for every run in this repo (smoke tests, two failed runs and
+the fixes they forced, and the final runs) was about **$2**: 9.2 A40-hours on
+Great Lakes, plus a few cents on Modal.
+
+**Reproduce:** `benchmarks/gpu_session.py` runs the whole session on any
+Linux machine with an NVIDIA GPU. `benchmarks/greatlakes/run_session.sbatch`
+and `benchmarks/modal_gpu_session.py` wrap it for Slurm and Modal.
+`python -m synapse_bench.summarize` regenerates every table from the raw
+results.
+
+### What running it on real hardware found
+
+The benchmark caught problems that tests and laptop runs didn't, each written
+up in [DECISIONS.md](DECISIONS.md):
+
+- **The gateway failed 68–75% of requests at 64 concurrent streams** in the
+  first full run. A change from milestone 1 had requests hold a database
+  connection while waiting for the model's first token, and the blocking
+  pool checkout froze the event loop. Two other suspects were ruled out by
+  tests before the real cause was found. After the fix: 0 failures (D16).
+- **A false "the gateway is 10× slower" result** on the laptop dry run was
+  really Ollama's prompt cache favouring whichever target ran second (D12).
+- **GSM8K was scoring answer *format*, not maths**, until the prompt used
+  Qwen's own `\boxed{}` convention (D13). A 512-token cap was also cutting off
+  about 2% of genuine solutions (D15).
+- **Libraries quietly wrote to home directories on shared university
+  machines**: FlashInfer, TileLang and vLLM's usage statistics. Found by
+  checking home after each run, and now checked automatically (D14).
+
+## Known limitations
+
+**Benchmark**
+- **Narrow scope:** one model, one GPU type (A40), one quality task (GSM8K,
+  zero-shot). The results say nothing about other tasks, long contexts or
+  newer GPUs.
+- **Short prompts:** the speed workload's prompts are short (median about 15
+  tokens), so runs mostly measure decoding; time to first token mostly
+  reflects queueing, not prompt processing.
+- **Prefix caching off:** it's off on purpose for fair comparisons, but
+  production deployments usually turn it on.
+- **Concurrency up to 64**, and cost assumes the GPU stays that busy.
+
+**Gateway**
+- **Throughput at high load:** it's a single Python process doing
+  synchronous database and embedding work on its event loop. At 64
+  concurrent requests that costs a noticeable share of throughput (the
+  gateway-overhead table above). Measured, not yet fixed.
+- **Cache key:** the cache key ignores `temperature`, and requests that set
+  `max_tokens` bypass the cache entirely (D2).
+- **Self-tuning threshold:** it's tested with unit tests and a deterministic
+  judge. Earlier GPU experiments with it were removed from this README
+  because their raw data was never committed.
+
+**Demo**
+- **Recorded, not live:** the public site is a static replay. Its Playground
+  answers come from a 0.5B model on a laptop and are sometimes wrong; the
+  page says so.
+
+## Project layout
+
 ```
-
-Then open the dashboard to watch request volume, cache hit rate, cost
-saved, and latency update live, use **Playground** to chat through the
-gateway directly (streaming or not), and **API Keys** to create/revoke keys
-and set or clear their rate limit and quota.
-
-Exceeding a key's rate limit or quota returns `429` (rate limit responses
-carry a `Retry-After` header).
-
-### Serving several models (or model variants) at once
-
-By default every request goes to the one backend `PROVIDER` selects. To give
-individual model names their own backend, for example a 16-bit and a 4-bit
-version of the same model, each on its own vLLM server, copy
-`models.example.toml` to `models.toml`, edit it, and set
-`MODEL_REGISTRY_PATH=models.toml`. Clients pick a variant by name
-(`"model": "qwen2.5-7b-awq"`), the request log records that name, and
-`GET /v1/models` lists the registered names. Unlisted names still go to
-`PROVIDER`, and a malformed registry file stops the gateway at startup
-rather than routing anywhere unexpected.
-
-For benchmarking at a fixed output length, vLLM-served models accept
-`"ignore_eos": true` together with `max_tokens`: generation continues past
-the model's end-of-sequence token, so every reply is exactly `max_tokens`
-long. With the `openai` SDK, pass it as `extra_body={"ignore_eos": True}`.
-It's rejected with a 400 without `max_tokens` or for Ollama-served models.
-
-To skip the semantic cache for one request (no lookup, no store), send
-`x-synapse-cache: bypass`. With the `openai` SDK, that's
-`extra_headers={"x-synapse-cache": "bypass"}`. The response carries
-`x-cache: bypass`. Requests that set `max_tokens` also skip the cache (see
-[DECISIONS.md](DECISIONS.md), D2).
+backend/            FastAPI gateway: providers, model registry, semantic cache,
+                    adaptive threshold, rate limits/quotas, stats API (Alembic, pytest)
+frontend/           React + TypeScript dashboard (Vite, Tailwind, Recharts);
+                    `npm run build:demo` builds the static demo
+benchmarks/         the quantization benchmark: load generator, metrics, GSM8K eval,
+                    GPU session runners (any Linux GPU, Great Lakes, Modal),
+                    raw results/ and the generated RESULTS.md
+scripts/            record_replay.py (demo recordings), capture_demo_media.py (README images)
+docs/PLAN.md        the plan this upgrade followed
+DECISIONS.md        every real trade-off, in plain language (D1–D18)
+```
 
 ## Tests
 
 ```bash
 cd backend && pip install -r requirements-dev.txt && ruff check app tests && pytest
-cd frontend && npm install && npm run lint && npm run build
+cd benchmarks && pip install -r requirements.txt && ruff check . && pytest
+cd frontend && npm ci && npm run lint && npm test && npm run build
 ```
 
-Both run in CI on every push (`.github/workflows/ci.yml`). Tests build
-their schema straight from the SQLAlchemy models (no Alembic involved) and
-run against fakeredis. The backend suite runs twice in CI: once on SQLite
-and once on a real Postgres 16, which also checks that the Alembic
-migrations apply and match the models. To run it on Postgres locally, set
-`TEST_DATABASE_URL=postgresql://user:pass@host:5432/db`. Fakeredis doesn't
-implement the vector search commands, so the ANN cache branch is covered
-separately with a mocked Redis client (`tests/test_cache_ann.py`). `tests/test_openai_compat.py` runs
-the real `openai` SDK against the app in-process (via httpx's ASGI
-transport) to verify drop-in compatibility, not just a schema comparison.
-
-## Project layout
-
-```
-backend/
-  alembic/            migrations (env.py reads DATABASE_URL from Settings)
-  app/
-    main.py           FastAPI app + router wiring
-    providers.py       Ollama + vLLM clients, pluggable via PROVIDER, with
-                        opt-in mock fallback, incl. streaming
-    cache.py           semantic cache: exact match, ANN vector search
-                        (Redis Query Engine) with linear-scan fallback
-    embeddings.py      sentence-transformers embedder + hashing fallback
-    threshold_controller.py  adaptive per-model cache similarity threshold
-    judge.py            LLM-judge (+ heuristic fallback) shadow verification
-    background.py       fire-and-forget helper for shadow verification
-    model_registry.py  optional per-model backends (MODEL_REGISTRY_PATH)
-    pricing.py         cost estimation per model
-    auth.py            API key issuance/verification
-    ratelimit.py        per-key rate limiting (req/min) + monthly $ quotas
-    redis_client.py     shared Redis connection (cache + rate limiter)
-    api/
-      gateway.py       POST /v1/chat/completions (streaming + non-streaming)
-      admin.py         API key CRUD + rate limit/quota updates (admin-key protected)
-      stats.py         summary / timeseries / provider breakdown / request log
-                        + cache-threshold (adaptive controller state)
-  tests/
-  scripts/
-    benchmark.py       cache precision/recall/F1 vs a live gateway, with
-                        --rounds to show the adaptive threshold converging
-benchmarks/            quantization benchmark harness (speed + GSM8K quality),
-                        see benchmarks/README.md
-frontend/
-  src/
-    pages/             Dashboard (incl. adaptive threshold panel),
-                        Playground (live chat), Requests, ApiKeys
-    api/client.ts      typed fetch wrapper
-```
-
-## Notes / possible next steps
-
-Highest-value next step, concretely: re-run
-`backend/scripts/benchmark.py --rounds` at `SHADOW_VERIFY_SAMPLE_RATE=0.2`
-(the realistic default, vs. the 100% used for the fast convergence demo
-above) against the same real Ollama + real embeddings setup, and compare
-aggregate cache-miss latency to the ~470ms warm baseline -- confirms or
-rules out the background-judge-contention hypothesis in the "Update: real
-GPU + real model results" section above.
-
-Other next steps:
-- Swap linear TTL-window rate limiting for a sliding-window/token-bucket
-  algorithm if bursts right at the minute boundary start to matter.
-- vLLM support landed (`PROVIDER=vllm`, `app/providers.py`'s `VLLMProvider`)
-  and is now validated against a real vLLM server too, not just the mocked
-  transport in `tests/test_providers_vllm.py` -- see "Update: real vLLM
-  results" above. What that run didn't settle: a controlled back-to-back
-  comparison against Ollama (same model, same GPU, both engines) to
-  actually attribute the latency difference it surfaced, rather than the
-  different-model/possibly-different-GPU comparison done so far. Further
-  providers (llama.cpp server, etc.) would slot into the same
-  `BaseProvider` shape.
-- Alerting on quota/rate-limit thresholds instead of just blocking at 100%.
-- A controlled ANN-vs-linear-scan latency/throughput benchmark as cache
-  size grows (1k/10k/100k entries) -- the vector index exists (and was
-  exercised for real via `redis/redis-stack-server` in the GPU run above),
-  but its payoff at scale isn't measured yet.
-- Load/concurrency testing (p50/p95/p99 under N concurrent users) against
-  real GPU-served Ollama, informed by whatever the shadow-verify
-  contention follow-up above finds.
-- Revisit `target_false_positive_rate` (currently 5%): the real-GPU run
-  showed a real precision/recall tradeoff at that setting -- worth
-  measuring whether a looser target (e.g. 10%) recovers meaningfully more
-  `novel_only` recall without letting precision slip further than
-  acceptable.
+CI runs all of it on every push. The backend suite runs on both SQLite and
+Postgres 16, with `alembic check` against the models. Test highlights:
+- the real `openai` SDK against the app;
+- a real-server test that no database connection is held while waiting for
+  a model;
+- benchmark metrics checked against hand-computed values;
+- generated results pinned to the raw data.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) — setup, test commands, and code
-style all in one short doc. Issues and PRs welcome.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Issues and PRs welcome.
 
 ## License
 
-[MIT](LICENSE).
+[MIT](LICENSE). The benchmark's prompt workload is derived from
+databricks-dolly-15k (CC BY-SA 3.0) and its eval set is GSM8K (MIT); see
+[`benchmarks/workloads/SOURCES.md`](benchmarks/workloads/SOURCES.md).
