@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "sync-results": "node scripts/sync-benchmark-results.mjs"
+    "sync-results": "node scripts/sync-benchmark-results.mjs",
+    "build:demo": "tsc -b && vite build --mode demo --outDir dist-demo"
   },
   "dependencies": {
     "react": "^18.3.1",
