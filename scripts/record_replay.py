@@ -17,6 +17,11 @@ paraphrase (recorded as-is, hit or miss).
 
 Reads the gateway API key from SYNAPSE_API_KEY. Run against a gateway with an
 empty cache, so the first ask of each topic is a genuine miss.
+
+One warm-up request on an unrelated prompt is sent first and NOT recorded:
+the very first request after startup also pays for loading the embedding
+model and the LLM into memory (~8 s in the first attempt), which isn't what
+a running gateway looks like. The provenance says so.
 """
 
 import argparse
@@ -32,6 +37,7 @@ from pathlib import Path
 import httpx
 
 REPO = Path(__file__).resolve().parents[1]
+WARMUP_PROMPT = "Say hello in one short sentence."
 
 TOPICS = [
     {
@@ -120,7 +126,8 @@ def main() -> int:
     base = args.gateway_url.rstrip("/")
     url = f"{base}/v1/chat/completions"
     with httpx.Client(timeout=300) as client:
-        health = client.get(f"{base}/health").json()
+        warmup = stream_once(client, url, key, args.model, WARMUP_PROMPT)
+        print(f"warm-up (not recorded): ttft={warmup['ttft_ms']}ms total={warmup['total_ms']}ms", flush=True)
         topics = []
         for topic in TOPICS:
             exchanges = []
@@ -144,8 +151,11 @@ def main() -> int:
             "backend": args.backend_description,
             "embedder_backend": health.get("embedder_backend"),
             "client_platform": platform.platform(),
+            "warmup": {"prompt": WARMUP_PROMPT, "recorded": False, "ttft_ms": warmup["ttft_ms"],
+                       "total_ms": warmup["total_ms"]},
             "note": "Real requests to a real Synapse gateway, replayed with their original timing. "
-                    "The model is a small CPU model, not the GPU-benchmarked one.",
+                    "The model is a small laptop model, not the GPU-benchmarked one. One unrecorded "
+                    "warm-up request was sent first, so model loading isn't in the timings.",
         },
         "topics": topics,
     }
