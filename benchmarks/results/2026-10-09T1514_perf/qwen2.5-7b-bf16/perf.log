@@ -1,0 +1,8 @@
+gateway  rep=0 c=1   ok=100/100 ttft p50=68ms p95=156ms  e2e p50=7188ms p95=7279ms  agg=35.4 tok/s  client_cpu=0.01
+gateway  rep=0 c=4   ok=100/100 ttft p50=138ms p95=228ms  e2e p50=7415ms p95=7512ms  agg=137.9 tok/s  client_cpu=0.02
+gateway  rep=0 c=16  ok=100/100 ttft p50=421ms p95=786ms  e2e p50=8061ms p95=8368ms  agg=465.5 tok/s  client_cpu=0.06
+gateway  rep=0 c=64  ok=100/100 ttft p50=2352ms p95=2898ms  e2e p50=11229ms p95=11564ms  agg=1260.5 tok/s  client_cpu=0.14
+direct   rep=0 c=1   ok=100/100 ttft p50=36ms p95=94ms  e2e p50=7155ms p95=7217ms  agg=35.7 tok/s  client_cpu=0.01
+direct   rep=0 c=4   ok=100/100 ttft p50=93ms p95=179ms  e2e p50=7358ms p95=7472ms  agg=138.7 tok/s  client_cpu=0.02
+direct   rep=0 c=16  ok=100/100 ttft p50=190ms p95=438ms  e2e p50=7830ms p95=8002ms  agg=470.2 tok/s  client_cpu=0.05
+direct   rep=0 c=64  ok=100/100 ttft p50=508ms p95=1319ms  e2e p50=9357ms p95=9625ms  agg=1463.1 tok/s  client_cpu=0.14

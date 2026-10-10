@@ -1,0 +1,4 @@
+gateway  rep=0 c=1   ok=100/100 ttft p50=49ms p95=165ms  e2e p50=3717ms p95=3838ms  agg=68.5 tok/s  client_cpu=0.01
+gateway  rep=0 c=16  ok=100/100 ttft p50=460ms p95=824ms  e2e p50=4572ms p95=4813ms  agg=838.1 tok/s  client_cpu=0.07
+gateway  rep=1 c=1   ok=100/100 ttft p50=50ms p95=153ms  e2e p50=3717ms p95=3827ms  agg=68.5 tok/s  client_cpu=0.01
+gateway  rep=1 c=16  ok=100/100 ttft p50=425ms p95=903ms  e2e p50=4567ms p95=4951ms  agg=837.7 tok/s  client_cpu=0.07

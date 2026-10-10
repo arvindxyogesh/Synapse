@@ -35,6 +35,14 @@ def require_api_key(
     api_key = db.query(ApiKey).filter(ApiKey.key_hash == key_hash, ApiKey.revoked.is_(False)).first()
     if not api_key:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or revoked API key")
+    # Detach the key and end the read transaction now. Otherwise the request's
+    # session keeps its pooled DB connection until the request finishes --
+    # for a streamed reply, the whole generation -- and 64 concurrent streams
+    # exhausted SQLAlchemy's default 15-connection pool in the GPU benchmark
+    # (HTTP 500s after a 30 s pool timeout; DECISIONS.md D16). Logging at the
+    # end of a request borrows a connection again for a few milliseconds.
+    db.expunge(api_key)
+    db.commit()
     return api_key
 
 

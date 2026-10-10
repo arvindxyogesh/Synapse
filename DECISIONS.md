@@ -539,3 +539,189 @@ answer would have been graded against the wrong value. Fixed and tested
 (`possibly_truncated`). The 7B model is expected to be more concise. If more
 than a handful of its replies hit the cap in milestone 4, the cap gets
 raised before results are reported.
+
+---
+
+## D14. Running on shared university machines: keep out of home, and avoid compiling kernels at startup
+
+**Date:** 2026-10-08
+
+**Context.** The benchmark moved from Modal to university hardware: a shared
+lab node (`maui`, 8× H200) for a smoke test, then Great Lakes (U-M's Slurm
+cluster, one whole A40 per job). The rule on both was that everything gets
+stored under a designated data/scratch folder, never home. On Great Lakes
+home was already 99.9% full.
+
+**What went wrong, and how it was found.** `env.sh` redirected the usual
+caches (Hugging Face, pip, XDG, Triton, Torch, vLLM's compile cache) into
+scratch. But after the first runs, a check for anything modified in home
+since the jobs started found three more:
+- **FlashInfer**: its kernel cache goes under `$FLASHINFER_WORKSPACE_BASE`,
+  which defaults to home and ignores the XDG variables.
+- **humming-kernels**, a vLLM dependency, writes `~/.humming`
+  (`HUMMING_TMP_DIR` / `HUMMING_CACHE_DIR`).
+- **vLLM's usage statistics**, `~/.config/vllm/usage_stats.json`
+  (`VLLM_CONFIG_ROOT`). vLLM also sends these anonymously to the vLLM
+  project by default.
+
+Cleanup was limited to files whose timestamps and counts showed they came
+from these runs:
+- On Great Lakes, home is back to exactly its post-setup file count.
+- On `maui`, `~/.config/vllm` and `~/.humming` already existed (created
+  2026-09-02 by earlier vLLM work), so they were left in place. The only
+  side effect there is that `usage_stats.json`'s contents were overwritten.
+
+A third, found after the next run by searching home by *change* time
+(modification-time searches miss files that keep their original
+timestamps): **TileLang** (another vLLM dependency) creates `~/.tilelang`
+(`TILELANG_CACHE_DIR`).
+
+**Fix.** All of these variables are now set in `env.sh`, and every Great
+Lakes job ends by listing anything created or changed in home during the job,
+so the next one of these shows up in the job log instead of being found by
+hand. The runner also
+turns usage statistics off entirely (`VLLM_NO_USAGE_STATS=1`,
+`DO_NOT_TRACK=1`); sending telemetry from shared university machines isn't
+this project's call to make.
+
+**The FlashInfer sampler.** FlashInfer also compiles a *top-k/top-p sampling*
+kernel with `nvcc` the first time vLLM starts. That failed twice:
+- Great Lakes compute nodes have no system CUDA (`/usr/local/cuda`), and
+  their newest CUDA module is 12.6, while vLLM 0.31.0 is built for CUDA 13.
+- The CUDA 13 toolkit that pip installs alongside vLLM doesn't fully agree
+  with itself (`nvcc` 13.4 vs. runtime headers 13.0): "CUDA compiler and CUDA
+  toolkit headers are incompatible."
+
+Options: pin pip's `nvcc` to 13.0, install FlashInfer's prebuilt kernel
+package, or turn the FlashInfer sampler off (`VLLM_USE_FLASHINFER_SAMPLER=0`).
+Turning it off was chosen. **Every request in this benchmark uses
+`temperature=0`**, i.e. greedy decoding, which picks the highest-scoring
+token directly and never runs top-k/top-p sampling. vLLM was only building
+the kernel during start-up warm-up. So the switch changes nothing measured;
+it's the same for every variant and recorded in `session.json`.
+
+**Cost per 1K tokens on Great Lakes** uses the job's actual billed rate.
+The first estimate ($0.47/h) wrongly *summed* the partition's per-resource
+billing weights. Slurm's own record for the smoke job (`billing=36157` per
+minute) showed it bills the *largest* term, here the 8 CPUs: **$0.217/h**.
+The account balance agreed ($0.24 for about 66 minutes of smoke jobs).
+
+**Cost of running on Great Lakes:** start-up is slow. Python imports
+thousands of small files from the cluster's network filesystem (GPFS) with
+nothing cached on the node: about 7 minutes for the flag check and about 8
+minutes before vLLM starts loading the model, vs. 87 seconds total on
+`maui`. That's around $0.10 per variant at the job's billed rate, accepted
+rather than adding a "copy the environment to local disk first" step.
+
+---
+
+## D15. First full run: AWQ lost to a port hand-over bug, and the GSM8K cap raised to 2,048 (follow-up to D10/D13)
+
+**Date:** 2026-10-08
+
+**The run.** One Great Lakes job (63559791) on one whole A40 ran the three
+variants back to back, in 2 h 23 min at a cost of $0.52 (matching the account
+balance). The 16-bit and 8-bit GPTQ variants completed with every integrity
+check passing. The 4-bit AWQ variant **failed within a second of starting**,
+with nothing measured.
+
+**Why AWQ failed.** Each variant's vLLM uses the same port. The AWQ server's
+first health check got `BadStatusLine: GET /health HTTP/1.1` back, while its
+own log was still empty, so the reply came from something else on the port
+seconds after the 16-bit server had been stopped. Most likely that was a
+child process of the old server: vLLM runs its engine in a separate process,
+and stopping only the parent can leave the child behind. The health check
+also only treated connection errors as "not ready", so a garbled reply
+aborted the variant.
+
+**Fixes** (tests reproduce both failure modes, and fail on the old code):
+- Every server is started as its own process group, and stopping it signals
+  the whole group.
+- The next variant waits until all its ports are free, and refuses to start
+  otherwise.
+- Malformed replies count as "not ready yet". After `/health` succeeds, the
+  server must list *exactly this variant's model* in `/v1/models`, so a
+  variant can never be measured against the previous one's server.
+
+**Why the GSM8K cap changes.** D13 committed to raising the output cap if
+more than a handful of 7B replies hit it. They did: 30 of 1,319 (16-bit) and
+29 of 1,319 (GPTQ) used exactly 512 tokens. Reading them showed:
+- only 1–2 per variant contained a boxed answer;
+- only one looked repetitive. The rest were sound step-by-step solutions cut
+  off mid-way (e.g. still counting years towards an answer of 13).
+
+So about 2% of questions were being scored wrong for *length*, not maths, and
+not necessarily equally across variants. The cap is now **2,048 tokens**,
+still well inside the 4,096-token context window, and the same for every
+variant. The truncation count stays in every summary, so it will show whether
+2,048 is enough.
+
+**Consequence.** The first run's GSM8K numbers (at 512) are superseded and
+won't be reported as results. The full session is rerun with all three
+variants on one GPU, so the comparison stays within a single card. The first
+run's 16-bit and GPTQ *speed* numbers are kept as raw data: two independent
+runs on two different A40s give a real measure of run-to-run and
+card-to-card spread.
+
+---
+
+## D16. A bug the benchmark found: the gateway falls over at 64 concurrent streams (and I introduced it in D1)
+
+**Date:** 2026-10-09
+
+**What the rerun showed.** All three variants completed (Great Lakes job
+63571760, one A40, 3 h 16 min, $0.70). In every variant, **gateway at
+concurrency 64 failed 68–75 of 100 requests**: about 40 as HTTP 500, the rest
+as broken streams (`ReadError`). The same level sent **directly to vLLM had
+zero failures**, and every gateway level up to 16 had zero failures.
+
+**Cause, found by eliminating explanations rather than guessing.**
+1. The gateway log showed every 500 was SQLAlchemy's
+   `QueuePool limit of size 5 overflow 10 reached, connection timed out,
+   timeout 30.00`, raised at the API-key lookup at the start of a request.
+   All 15 pooled database connections were busy.
+2. *Not* connections held during token streaming. A test with a real server
+   showed 0 connections held mid-stream. An earlier version of that test
+   "passed" for the wrong reason: httpx's in-process test transport buffers
+   whole responses, so it never sees a stream in progress.
+3. *Not* the SQLite file sitting on Great Lakes' network filesystem. Measured
+   on the login node, a write takes about 4 ms there vs. about 1 ms on local
+   disk: slower, but nowhere near enough to hold connections for 30 s.
+4. **It is the wait for the first token.** D1 made the streaming path wait
+   for the model's first chunk *inside the request handler*, so a dead
+   backend still gets a proper 502. During that wait, the request's database
+   session, opened for the API-key lookup, still holds its connection. A test
+   with a backend that takes 0.6 s to produce its first token shows **10 of
+   10 waiting requests holding a connection** before the fix, and 0 after.
+
+At concurrency 64, vLLM queues requests and the first token can take
+seconds, so more than 15 requests are waiting at once and the pool empties.
+Then it gets much worse. Taking a connection from the pool is a
+*synchronous, blocking* call inside an `async` handler (the
+"sync work on the event loop" problem noted in the original plan). So the
+next request's API-key lookup **freezes the gateway's entire event loop**
+for up to 30 seconds. No other stream can make progress or release its
+connection, the waiters time out with 500s, and streams that were mid-flight
+break.
+
+**Fix.** Right after the API-key lookup, the key object is detached and the
+read transaction ended, so the connection goes back to the pool before any
+model work starts. Logging at the end of the request borrows a connection
+for a few milliseconds. This also helps non-streaming requests (e.g. the
+GSM8K eval at concurrency 32), which held a connection for the whole model
+call.
+
+**What it means for the numbers.**
+- **Directly-to-vLLM** speed numbers, GPU memory and GSM8K accuracy are
+  unaffected by this bug. Accuracy had 0 errors; the bug could slow eval
+  requests down but not change their answers.
+- **All gateway speed numbers** from this run are affected. Concurrency 64
+  is unusable, and even at 16 (just above the pool size), occasional
+  event-loop freezes may have inflated latency. They won't be published, and
+  speed is re-measured with the fix: gateway and direct in the same job,
+  because the comparison only means something within one run.
+
+**The lesson for interviews.** The failure only appeared at the highest
+concurrency, on real hardware, with a real model whose first token is slow
+under load. Every earlier test, and the smoke run at concurrency 16, passed.
+That's the case for load-testing at the concurrency you plan to serve.

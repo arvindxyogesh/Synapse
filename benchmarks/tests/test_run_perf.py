@@ -113,3 +113,9 @@ def test_warns_when_backend_prompt_cache_was_used(fake, tmp_path, capsys):
     assert code == 0  # recorded and warned about, not an invalid response
     assert "prompt cache" in capsys.readouterr().err
     assert all(row["cached_prompt_tokens"] == 8 for row in json.loads((out / "summary.json").read_text()))
+
+
+def test_git_info_from_launcher_env(monkeypatch):
+    monkeypatch.setenv("SYNAPSE_GIT_COMMIT", "abc123")
+    monkeypatch.setenv("SYNAPSE_GIT_DIRTY", "false")
+    assert metadata.git_info() == {"commit": "abc123", "dirty": False, "source": "launcher"}

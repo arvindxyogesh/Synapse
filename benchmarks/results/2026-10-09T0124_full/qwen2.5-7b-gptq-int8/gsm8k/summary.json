@@ -1,0 +1,19 @@
+{
+  "n": 1319,
+  "n_errors": 0,
+  "n_possibly_truncated": 0,
+  "strict": {
+    "correct": 1212,
+    "accuracy": 0.9188779378316907,
+    "ci95_low": 0.9028986336077637,
+    "ci95_high": 0.9324244450433087
+  },
+  "flexible": {
+    "correct": 1161,
+    "accuracy": 0.8802122820318423,
+    "ci95_low": 0.8615751396430942,
+    "ci95_high": 0.8966411932863407
+  },
+  "model": "qwen2.5-7b-gptq-int8",
+  "limit": null
+}
