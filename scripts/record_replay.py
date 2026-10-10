@@ -103,11 +103,15 @@ def stream_once(client: httpx.Client, url: str, key: str, model: str, prompt: st
     }
 
 
-def git_commit() -> dict:
+def git_commit(output: Path) -> dict:
+    """Commit and dirty flag. The output file itself is excluded: a previous
+    recording sitting there shouldn't mark this one's code as uncommitted."""
     def run(*cmd):
         out = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True)
         return out.stdout.strip() if out.returncode == 0 else None
-    return {"commit": run("git", "rev-parse", "HEAD"), "dirty": bool(run("git", "status", "--porcelain"))}
+    exclude = f":(exclude){output.resolve().relative_to(REPO)}"
+    return {"commit": run("git", "rev-parse", "HEAD"),
+            "dirty": bool(run("git", "status", "--porcelain", "--", ".", exclude))}
 
 
 def main() -> int:
@@ -146,7 +150,7 @@ def main() -> int:
     recording = {
         "provenance": {
             "recorded_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "git": git_commit(),
+            "git": git_commit(args.out),
             "gateway_model": args.model,
             "backend": args.backend_description,
             "embedder_backend": health.get("embedder_backend"),
