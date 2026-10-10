@@ -1,7 +1,7 @@
 # Synapse
 
 [![CI](https://github.com/arvindxyogesh/Synapse/actions/workflows/ci.yml/badge.svg)](https://github.com/arvindxyogesh/Synapse/actions/workflows/ci.yml)
-[![Demo](https://github.com/arvindxyogesh/Synapse/actions/workflows/pages.yml/badge.svg)](https://arvindxyogesh.github.io/Synapse/)
+[![Demo](https://img.shields.io/badge/demo-GitHub%20Pages-2ea44f)](https://arvindxyogesh.github.io/Synapse/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **Synapse is a self-hosted, OpenAI-compatible gateway for open-weight LLMs:
