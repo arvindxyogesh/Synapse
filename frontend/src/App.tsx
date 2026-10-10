@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 
 import Nav from "./components/Nav";
 import ApiKeys from "./pages/ApiKeys";
+import Benchmarks from "./pages/Benchmarks";
 import Dashboard from "./pages/Dashboard";
 import Playground from "./pages/Playground";
 import Requests from "./pages/Requests";
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/playground" element={<Playground />} />
           <Route path="/requests" element={<Requests />} />
           <Route path="/api-keys" element={<ApiKeys />} />
+          <Route path="/benchmarks" element={<Benchmarks />} />
         </Routes>
       </main>
     </div>

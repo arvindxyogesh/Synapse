@@ -725,3 +725,46 @@ call.
 concurrency, on real hardware, with a real model whose first token is slow
 under load. Every earlier test, and the smoke run at concurrency 16, passed.
 That's the case for load-testing at the concurrency you plan to serve.
+
+---
+
+## D17. The Benchmarks page: recorded results, chosen chart forms, no live GPU
+
+**Date:** 2026-10-10
+
+**Context.** The dashboard gets a Benchmarks page that charts latency,
+throughput, memory and accuracy per variant. A GPU is too expensive to keep
+running for a portfolio site, so the page shows the recorded results, and says
+so on the page itself.
+
+**Where the data comes from.** Everything on the page comes from
+`benchmarks/results/summary.json`, which `synapse_bench/summarize.py`
+generates from the committed raw runs. The frontend keeps an exact copy
+(`npm run sync-results`), because its Docker build can only see `frontend/`. A
+test fails if the copy and the source ever differ, so the page can't quietly
+show stale numbers. The headline tiles (e.g. "3.1× decode speed") are
+computed from the same data, not written in.
+
+**Chart choices, and why.**
+- **Speed:** one line chart over concurrency, with a metric picker and a
+  direct / through-gateway toggle, rather than seven charts. Concurrency is
+  shown as evenly spaced categories (1, 4, 16, 64); each step is 4×, so a
+  linear axis would squash the first three points together.
+- **Accuracy:** dots with 95% confidence whiskers, *not* bars. The variants
+  differ by about 1 point, and bars starting at 0 would make 90.7% and 91.7%
+  look identical and hide the intervals, which are the whole point. The axis
+  starts at 84% and the chart says so.
+- **Memory:** stacked bars, weights plus KV cache, labelled with max
+  concurrency. This is the "what quantization buys" story from D11.
+- **Gateway overhead:** its own chart (throughput lost, %), because it's a
+  separate finding from the quantization comparison.
+
+**Colours and accessibility.** The three variants use the first three slots
+of a validated categorical palette, checked against the card background:
+every pair passes colour-blindness separation and 3:1 contrast. Each
+variant's colour stays with it on every chart. Lines are labelled directly
+where there's room, and every chart has a legend and a table view, so nothing
+depends on colour alone. On phones the end-of-line labels are dropped (they
+squeezed the plot to a third of the card) and the legend carries identity.
+Checked visually at desktop and 375 px widths; the nav now scrolls sideways
+on narrow screens instead of overflowing.
