@@ -1,0 +1,66 @@
+{
+  "timestamp_utc": "2026-10-09T16:01:04+00:00",
+  "git": {
+    "commit": "00f5b3ae541e39c8dac2ae994e56cf5b96212b84",
+    "dirty": false,
+    "source": "launcher"
+  },
+  "client": {
+    "python": "3.12.15",
+    "platform": "Linux-4.18.0-553.146.1.el8_10.x86_64-x86_64-with-glibc2.28",
+    "cpu_count": 32
+  },
+  "gpu": [
+    {
+      "name": "NVIDIA A40",
+      "driver_version": "595.71.05",
+      "memory_total_mib": 46068
+    }
+  ],
+  "workload": {
+    "path": "benchmarks/workloads/perf_prompts.jsonl",
+    "sha256": "b7ff345edfde828455dd2a0fedd9fb35548e1d8a35344f94f121e691332655a4"
+  },
+  "gateway": {
+    "health": {
+      "status": "ok",
+      "embedder_backend": "not-yet-initialized"
+    },
+    "models": {
+      "object": "list",
+      "data": [
+        {
+          "id": "qwen2.5-7b-bf16",
+          "object": "model",
+          "created": 0,
+          "owned_by": "synapse"
+        }
+      ]
+    }
+  },
+  "vllm": null,
+  "args": {
+    "model": "qwen2.5-7b-bf16",
+    "gateway_url": "http://127.0.0.1:37971",
+    "direct_url": null,
+    "direct_model": null,
+    "concurrency": "1,16",
+    "requests": 100,
+    "warmup": 10,
+    "repeat": 2,
+    "max_tokens": 256,
+    "no_fixed_length": false,
+    "gpu_price_per_hour": 0.217,
+    "timeout": 900.0,
+    "prompts": "/gpfs/accounts/si650f26_class_root/si650f26_class/savyo/synapse-bench/repo/benchmarks/workloads/perf_prompts.jsonl",
+    "gpu_sample": false,
+    "gpu_index": null,
+    "vllm_log": null,
+    "out": "/scratch/si650f26_class_root/si650f26_class/savyo/synapse-bench/results/2026-10-09T1514_perf/qwen2.5-7b-bf16/perf_repeats",
+    "levels": [
+      1,
+      16
+    ]
+  },
+  "vllm_log": null
+}

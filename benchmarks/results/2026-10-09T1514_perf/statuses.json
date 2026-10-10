@@ -1,0 +1,29 @@
+[
+  {
+    "variant": "qwen2.5-7b-bf16",
+    "started_utc": "2026-10-09T15:18:51+00:00",
+    "gpu_before_vllm": null,
+    "vllm_ready_after_s": 333.3,
+    "perf_exit": 0,
+    "perf_repeats_exit": 0,
+    "finished_utc": "2026-10-09T16:29:50+00:00"
+  },
+  {
+    "variant": "qwen2.5-7b-awq",
+    "started_utc": "2026-10-09T16:29:50+00:00",
+    "gpu_before_vllm": null,
+    "vllm_ready_after_s": 372.1,
+    "perf_exit": 0,
+    "perf_repeats_exit": 0,
+    "finished_utc": "2026-10-09T16:58:10+00:00"
+  },
+  {
+    "variant": "qwen2.5-7b-gptq-int8",
+    "started_utc": "2026-10-09T16:58:10+00:00",
+    "gpu_before_vllm": null,
+    "vllm_ready_after_s": 414.1,
+    "perf_exit": 0,
+    "perf_repeats_exit": 0,
+    "finished_utc": "2026-10-09T17:39:35+00:00"
+  }
+]

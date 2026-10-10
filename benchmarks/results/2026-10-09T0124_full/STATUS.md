@@ -9,4 +9,4 @@
 | GSM8K accuracy (all three variants, n=1,319, cap 2,048) | **Valid.** 0 request errors; 1 possibly-truncated answer in total (AWQ). |
 | GPU memory from vLLM's log (weights, KV cache, max concurrency, kernel) | **Valid.** |
 | Direct-to-vLLM speed numbers, all concurrency levels | **Valid.** 0 failures, exactly 256 output tokens each, 0 cached prompt tokens. |
-| Gateway speed numbers | **Not valid.** Concurrency 64 failed 68–75% of requests and lower levels may be inflated, due to a gateway bug since fixed (DECISIONS.md D16). Re-measured in a later run. |
+| Gateway speed numbers | **Not valid.** Concurrency 64 failed 68–75% of requests and lower levels may be inflated, due to a gateway bug since fixed (DECISIONS.md D16). Re-measured after the fix in `2026-10-09T1514_perf`. |
