@@ -201,18 +201,96 @@ def markdown(summary: dict) -> str:
     return "\n".join(lines)
 
 
+README_BEGIN = "<!-- BEGIN GENERATED RESULTS (python -m synapse_bench.summarize --readme ...) -->"
+README_END = "<!-- END GENERATED RESULTS -->"
+
+
+def readme_results(summary: dict) -> str:
+    """The compact results block embedded in the top-level README."""
+    v = summary["variants"]
+    sp = summary["provenance"]["speed_run"]
+    q = summary["provenance"]["quality_and_memory_run"]
+    direct = lambda key, c, f: v[key]["speed"]["by_target"]["direct"][c][f]  # noqa: E731
+    base, fast = BASELINE, "qwen2.5-7b-awq"
+    ps = [d["quality"]["vs_baseline"]["strict"]["mcnemar_p"] for d in v.values() if "vs_baseline" in d["quality"]]
+    gw_lost_64 = [(1 - d["speed"]["by_target"]["gateway"][64]["aggregate_output_tok_s"]
+                   / d["speed"]["by_target"]["direct"][64]["aggregate_output_tok_s"]) * 100 for d in v.values()]
+    gw_ttft_1 = [d["speed"]["by_target"]["gateway"][1]["ttft_p50_ms"]
+                 - d["speed"]["by_target"]["direct"][1]["ttft_p50_ms"] for d in v.values()]
+    takeaways = [
+        f"- **4-bit decodes {direct(fast, 1, 'decode_tok_s_p50') / direct(base, 1, 'decode_tok_s_p50'):.1f}× "
+        f"faster than 16-bit for a single request**, but the gap narrows to "
+        f"{direct(fast, 64, 'aggregate_output_tok_s') / direct(base, 64, 'aggregate_output_tok_s'):.1f}× in "
+        f"throughput at 64 concurrent requests.",
+        f"- **No accuracy difference is detectable** on the {v[base]['quality']['n']:,} GSM8K test questions "
+        f"(paired McNemar p ≥ {min(ps):.2f} for both quantized variants).",
+        f"- **Smaller weights buy capacity, not just speed:** the KV cache left over fits "
+        f"{v[fast]['memory']['max_concurrency']['requests']:.0f} concurrent 4K-token requests instead of "
+        f"{v[base]['memory']['max_concurrency']['requests']:.0f}.",
+        f"- **The gateway is cheap at low load and costly at high load:** about "
+        f"{min(gw_ttft_1):.0f}–{max(gw_ttft_1):.0f} ms extra time-to-first-token for a single request, but "
+        f"{min(gw_lost_64):.0f}–{max(gw_lost_64):.0f}% of throughput lost at 64 concurrent requests.",
+        "",
+    ]
+    lines = takeaways + [
+        "| Variant | Weights | Max concurrent 4K-token requests | Decode speed, 1 request | "
+        "Throughput, 64 requests | GSM8K accuracy [95% CI] | vs 16-bit |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for key, d in v.items():
+        m, s = d["memory"], d["quality"]["strict"]
+        cmp = d["quality"].get("vs_baseline", {}).get("strict")
+        vs = "baseline" if cmp is None else f"{cmp['difference_b_minus_a'] * 100:+.1f} pts (p = {cmp['mcnemar_p']:.2f})"
+        lines.append(
+            f"| {d['label']} | {m['weights_gib']:.1f} GiB | {m['max_concurrency']['requests']:.0f} | "
+            f"{direct(key, 1, 'decode_tok_s_p50'):.1f} tok/s | "
+            f"{direct(key, 64, 'aggregate_output_tok_s'):,.0f} tok/s | "
+            f"{s['accuracy']:.1%} [{s['ci95_low']:.1%}, {s['ci95_high']:.1%}] | {vs} |")
+
+    lines += ["", "**Gateway overhead** (same requests through Synapse vs. straight to vLLM):", "",
+              "| Variant | TTFT p50, 1 request | TTFT p50, 64 requests | Throughput lost, 1 / 4 / 16 / 64 requests |",
+              "|---|---|---|---|"]
+    for d in v.values():
+        t = d["speed"]["by_target"]
+        lost = [(1 - t["gateway"][c]["aggregate_output_tok_s"] / t["direct"][c]["aggregate_output_tok_s"]) * 100
+                for c in (1, 4, 16, 64)]
+        lines.append(
+            f"| {d['label']} | {t['direct'][1]['ttft_p50_ms']:.0f} → {t['gateway'][1]['ttft_p50_ms']:.0f} ms | "
+            f"{t['direct'][64]['ttft_p50_ms']:,.0f} → {t['gateway'][64]['ttft_p50_ms']:,.0f} ms | "
+            f"{' / '.join(f'{x:.0f}%' for x in lost)} |")
+
+    lines += ["",
+              f"*{sp['gpu'].split(',')[0]}, vLLM {sp['vllm_version']}, Great Lakes (U-M). Speed: run "
+              f"`{sp['folder']}` (commit `{sp['commit'][:7]}`, {sp['started_utc'][:10]}); accuracy and memory: run "
+              f"`{q['folder']}` (commit `{q['commit'][:7]}`). Every request generates exactly "
+              f"{summary['provenance']['speed_settings']['max_tokens']} tokens; 100 measured requests per level. "
+              f"Full tables, spread across repeats, and a second-GPU check: "
+              f"[`benchmarks/results/RESULTS.md`](benchmarks/results/RESULTS.md).*"]
+    return "\n".join(lines)
+
+
+def update_readme(readme: Path, summary: dict) -> None:
+    text = readme.read_text()
+    start, end = text.index(README_BEGIN) + len(README_BEGIN), text.index(README_END)
+    readme.write_text(text[:start] + "\n" + readme_results(summary) + "\n" + text[end:])
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--perf", type=Path, required=True, help="speed run folder")
     p.add_argument("--quality", type=Path, required=True, help="run folder with valid GSM8K + vLLM memory data")
     p.add_argument("--cross-card", type=Path, help="an earlier run on a different GPU, to compare direct throughput")
     p.add_argument("--out", type=Path, required=True)
+    p.add_argument("--readme", type=Path, help="also rewrite the generated results block in this README")
     args = p.parse_args(argv)
     summary = build(args.perf, args.quality, args.cross_card)
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     (args.out / "RESULTS.md").write_text(markdown(summary))
     print(f"wrote {args.out / 'summary.json'} and {args.out / 'RESULTS.md'}")
+    if args.readme:
+        update_readme(args.readme, summary)
+        print(f"updated the generated results block in {args.readme}")
     return 0
 
 
